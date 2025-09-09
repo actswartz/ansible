@@ -22,25 +22,25 @@ csr1000v-pod-01.localdomain
 ### Step 1: Test Basic Connectivity
 Test if Ansible can reach the CSR1000v:
 ```bash
-ansible csr -m ping
+ansible csr -i inventory.txt -m ping
 ```
 
 ### Step 2: Gather Basic Facts
 Use the ios_facts module from command line:
 ```bash
-ansible csr -m cisco.ios.ios_facts
+ansible csr -i inventory.txt -m cisco.ios.ios_facts
 ```
 
 ### Step 3: Get Specific Information
 Gather only hardware and interface facts:
 ```bash
-ansible csr -m cisco.ios.ios_facts -a "gather_subset=hardware,interfaces"
+ansible csr -i inventory.txt -m cisco.ios.ios_facts -a "gather_subset=hardware,interfaces"
 ```
 
 ### Step 4: Display Formatted Output
 Get facts with better formatting:
 ```bash
-ansible csr -m cisco.ios.ios_facts -a "gather_subset=default" --tree /tmp/facts
+ansible csr -i inventory.txt -m cisco.ios.ios_facts -a "gather_subset=default" --tree /tmp/facts
 ```
 
 ## Method 2: Using Ansible YAML Playbook
@@ -48,7 +48,7 @@ ansible csr -m cisco.ios.ios_facts -a "gather_subset=default" --tree /tmp/facts
 ### Step 1: Run the Playbook
 Execute the comprehensive connectivity test playbook:
 ```bash
-ansible-playbook lab1-connectivity-test.yml
+ansible-playbook -i inventory.txt lab1-connectivity-test.yml
 ```
 
 ### Step 2: Review Output
@@ -72,13 +72,13 @@ Check that the following information is displayed:
 
 ### CLI Method Output
 ```bash
-$ ansible csr -m ping
+$ ansible csr -i inventory.txt -m ping
 csr1000v-pod-01.localdomain | SUCCESS => {
     "changed": false,
     "ping": "pong"
 }
 
-$ ansible csr -m cisco.ios.ios_facts -a "gather_subset=default"
+$ ansible csr -i inventory.txt -m cisco.ios.ios_facts -a "gather_subset=default"
 csr1000v-pod-01.localdomain | SUCCESS => {
     "ansible_facts": {
         "ansible_net_hostname": "csr1000v-pod-01",

@@ -1,0 +1,112 @@
+---
+- name: Lab 4 - Access Control Lists Configuration
+  hosts: csr
+  connection: network_cli
+  gather_facts: no
+  
+  vars:
+    ansible_network_os: ios
+    
+  tasks:
+    - name: Display current ACL configuration
+      cisco.ios.ios_command:
+        commands:
+          - show access-lists
+      register: current_acls
+      
+    - name: Show current ACL configuration
+      debug:
+        var: current_acls.stdout_lines
+        
+    - name: Create standard ACL ALLOW_LAN
+      cisco.ios.ios_config:
+        parents: ip access-list standard ALLOW_LAN
+        lines:
+          - permit 192.168.10.0 0.0.0.255
+          - permit 192.168.20.0 0.0.0.255
+          - deny any
+      register: standard_acl
+      
+    - name: Create extended ACL WEB_TRAFFIC
+      cisco.ios.ios_config:
+        parents: ip access-list extended WEB_TRAFFIC
+        lines:
+          - permit tcp 192.168.10.0 0.0.0.255 any eq 80
+          - permit tcp 192.168.10.0 0.0.0.255 any eq 443
+          - permit tcp 192.168.20.0 0.0.0.255 any eq 80
+          - permit tcp 192.168.20.0 0.0.0.255 any eq 443
+          - deny ip any any
+      register: extended_acl_web
+      
+    - name: Create extended ACL DENY_TELNET
+      cisco.ios.ios_config:
+        parents: ip access-list extended DENY_TELNET
+        lines:
+          - deny tcp any any eq 23
+          - permit ip any any
+      register: extended_acl_telnet
+      
+    - name: Display standard ACL configuration changes
+      debug:
+        msg: "Standard ACL configuration: {{ standard_acl.commands | default('No changes') }}"
+        
+    - name: Display extended ACL WEB_TRAFFIC changes
+      debug:
+        msg: "Extended ACL WEB_TRAFFIC: {{ extended_acl_web.commands | default('No changes') }}"
+        
+    - name: Display extended ACL DENY_TELNET changes
+      debug:
+        msg: "Extended ACL DENY_TELNET: {{ extended_acl_telnet.commands | default('No changes') }}"
+        
+    - name: Apply standard ACL to GigabitEthernet2 inbound
+      cisco.ios.ios_config:
+        parents: interface GigabitEthernet2
+        lines:
+          - ip access-group ALLOW_LAN in
+      register: acl_apply_ge2
+      
+    - name: Apply extended ACL to GigabitEthernet3 outbound
+      cisco.ios.ios_config:
+        parents: interface GigabitEthernet3
+        lines:
+          - ip access-group WEB_TRAFFIC out
+      register: acl_apply_ge3
+      
+    - name: Display ACL application changes for GE2
+      debug:
+        msg: "GE2 ACL application: {{ acl_apply_ge2.commands | default('No changes') }}"
+        
+    - name: Display ACL application changes for GE3
+      debug:
+        msg: "GE3 ACL application: {{ acl_apply_ge3.commands | default('No changes') }}"
+        
+    - name: Verify ACL configuration and application
+      cisco.ios.ios_command:
+        commands:
+          - show access-lists
+          - show ip interface GigabitEthernet2 | include access list
+          - show ip interface GigabitEthernet3 | include access list
+      register: acl_verification
+      
+    - name: Show all configured ACLs
+      debug:
+        msg: "{{ acl_verification.stdout[0].split('\n') }}"
+        
+    - name: Show GE2 interface ACLs
+      debug:
+        msg: "GE2 Interface ACLs: {{ acl_verification.stdout[1] }}"
+        
+    - name: Show GE3 interface ACLs
+      debug:
+        msg: "GE3 Interface ACLs: {{ acl_verification.stdout[2] }}"
+        
+    - name: Create numbered ACL for comparison
+      cisco.ios.ios_config:
+        lines:
+          - access-list 10 permit 192.168.10.0 0.0.0.255
+          - access-list 10 deny any
+      register: numbered_acl
+      
+    - name: Display numbered ACL configuration
+      debug:
+        msg: "Numbered ACL configuration: {{ numbered_acl.commands | default('No changes') }}"

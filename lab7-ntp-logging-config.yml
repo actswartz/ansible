@@ -1,0 +1,70 @@
+---
+- name: Lab 7 - NTP and Logging Configuration
+  hosts: csr
+  connection: network_cli
+  gather_facts: no
+  
+  vars:
+    ansible_network_os: ios
+    
+  tasks:
+    - name: Display current time and NTP status
+      cisco.ios.ios_command:
+        commands:
+          - show clock
+          - show ntp status
+          - show logging
+      register: current_time_config
+      
+    - name: Show current time configuration
+      debug:
+        var: current_time_config.stdout_lines
+        
+    - name: Configure timezone
+      cisco.ios.ios_config:
+        lines:
+          - clock timezone EST -5
+          - clock summer-time EDT recurring
+      register: timezone_config
+      
+    - name: Configure NTP servers
+      cisco.ios.ios_config:
+        lines:
+          - ntp server pool.ntp.org prefer
+          - ntp server 8.8.8.8
+          - ntp server 1.1.1.1
+          - ntp update-calendar
+      register: ntp_config
+      
+    - name: Configure logging buffer and console
+      cisco.ios.ios_config:
+        lines:
+          - logging buffered 64000 informational
+          - logging console warnings
+          - logging monitor informational
+      register: logging_local
+      
+    - name: Configure remote logging hosts
+      cisco.ios.ios_config:
+        lines:
+          - logging host 192.168.10.100
+          - logging host 192.168.20.100 transport udp port 514
+          - logging trap informational
+      register: logging_remote
+      
+    - name: Configure logging source interface
+      cisco.ios.ios_config:
+        lines:
+          - logging source-interface GigabitEthernet1
+      register: logging_source
+      
+    - name: Configure logging timestamps
+      cisco.ios.ios_config:
+        lines:
+          - service timestamps log datetime msec localtime show-timezone
+          - service timestamps debug datetime msec localtime show-timezone
+      register: logging_timestamps
+      
+    - name: Display timezone configuration changes
+      debug:
+        msg: \"Timezone configuration: {{ timezone_config.commands | default('No changes') }}\"\n        \n    - name: Display NTP configuration changes\n      debug:\n        msg: \"NTP configuration: {{ ntp_config.commands | default('No changes') }}\"\n        \n    - name: Display local logging configuration changes\n      debug:\n        msg: \"Local logging configuration: {{ logging_local.commands | default('No changes') }}\"\n        \n    - name: Display remote logging configuration changes\n      debug:\n        msg: \"Remote logging configuration: {{ logging_remote.commands | default('No changes') }}\"\n        \n    - name: Display logging source configuration\n      debug:\n        msg: \"Logging source configuration: {{ logging_source.commands | default('No changes') }}\"\n        \n    - name: Display timestamp configuration\n      debug:\n        msg: \"Timestamp configuration: {{ logging_timestamps.commands | default('No changes') }}\"\n        \n    - name: Wait for NTP synchronization attempt\n      pause:\n        seconds: 30\n        \n    - name: Verify NTP and logging configuration\n      cisco.ios.ios_command:\n        commands:\n          - show clock detail\n          - show ntp associations\n          - show ntp status\n          - show logging\n      register: verification\n      \n    - name: Show updated clock information\n      debug:\n        msg: \"{{ verification.stdout[0].split('\n') }}\"\n        \n    - name: Show NTP associations\n      debug:\n        msg: \"{{ verification.stdout[1].split('\n') }}\"\n        \n    - name: Show NTP status\n      debug:\n        msg: \"{{ verification.stdout[2].split('\n') }}\"\n        \n    - name: Show logging configuration\n      debug:\n        msg: \"{{ verification.stdout[3].split('\n') }}\"\n        \n    - name: Generate test log message\n      cisco.ios.ios_command:\n        commands:\n          - send log \"This is a test log message from Ansible Lab 7\"\n      register: test_log\n      \n    - name: Display test log generation\n      debug:\n        msg: \"Test log message sent: {{ test_log.stdout[0] if test_log.stdout else 'Log sent successfully' }}\"\n        \n    - name: Configure SNMP logging (optional)\n      cisco.ios.ios_config:\n        lines:\n          - logging snmp-trap emergencies\n          - logging snmp-trap alerts\n      register: snmp_logging\n      ignore_errors: yes\n      \n    - name: Display SNMP logging configuration\n      debug:\n        msg: \"SNMP logging configuration: {{ snmp_logging.commands | default('No changes') }}\""

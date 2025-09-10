@@ -1,0 +1,51 @@
+---
+- name: Lab 6 - Static and Default Routing Configuration
+  hosts: csr
+  connection: network_cli
+  gather_facts: no
+  
+  vars:
+    ansible_network_os: ios
+    
+  tasks:
+    - name: Display current routing table
+      cisco.ios.ios_command:
+        commands:
+          - show ip route
+          - show ip route static
+      register: current_routes
+      
+    - name: Show current routing table
+      debug:
+        var: current_routes.stdout_lines
+        
+    - name: Configure default route
+      cisco.ios.ios_config:
+        lines:
+          - ip route 0.0.0.0 0.0.0.0 192.168.1.1
+      register: default_route
+      
+    - name: Configure static routes to internal networks
+      cisco.ios.ios_config:
+        lines:
+          - ip route 10.0.0.0 255.0.0.0 GigabitEthernet2
+          - ip route 172.16.0.0 255.255.0.0 192.168.10.254
+          - ip route 203.0.113.0 255.255.255.0 192.168.20.254
+      register: static_routes
+      
+    - name: Configure backup routes with higher administrative distance
+      cisco.ios.ios_config:
+        lines:
+          - ip route 172.16.0.0 255.255.0.0 192.168.20.254 200
+          - ip route 10.0.0.0 255.0.0.0 192.168.10.254 150
+      register: backup_routes
+      
+    - name: Configure host-specific route
+      cisco.ios.ios_config:
+        lines:
+          - ip route 8.8.8.8 255.255.255.255 192.168.1.1
+      register: host_route
+      
+    - name: Display default route configuration
+      debug:
+        msg: \"Default route configuration: {{ default_route.commands | default('No changes') }}\"\n        \n    - name: Display static routes configuration\n      debug:\n        msg: \"Static routes configuration: {{ static_routes.commands | default('No changes') }}\"\n        \n    - name: Display backup routes configuration\n      debug:\n        msg: \"Backup routes configuration: {{ backup_routes.commands | default('No changes') }}\"\n        \n    - name: Display host route configuration\n      debug:\n        msg: \"Host route configuration: {{ host_route.commands | default('No changes') }}\"\n        \n    - name: Wait for routing table to update\n      pause:\n        seconds: 3\n        \n    - name: Verify updated routing table\n      cisco.ios.ios_command:\n        commands:\n          - show ip route\n          - show ip route static\n          - show ip route 0.0.0.0\n      register: updated_routes\n      \n    - name: Show complete routing table\n      debug:\n        msg: \"{{ updated_routes.stdout[0].split('\n') }}\"\n        \n    - name: Show static routes only\n      debug:\n        msg: \"{{ updated_routes.stdout[1].split('\n') }}\"\n        \n    - name: Show default route details\n      debug:\n        msg: \"{{ updated_routes.stdout[2].split('\n') }}\"\n        \n    - name: Test connectivity to default gateway\n      cisco.ios.ios_ping:\n        dest: 192.168.1.1\n      register: gw_ping\n      ignore_errors: yes\n      \n    - name: Display gateway connectivity test\n      debug:\n        msg: \"Gateway ping test: {{ 'SUCCESS' if gw_ping.packet_loss == '0' else 'FAILED' }}\"\n        \n    - name: Configure null route for security (blackhole)\n      cisco.ios.ios_config:\n        lines:\n          - ip route 192.0.2.0 255.255.255.0 Null0\n      register: null_route\n      \n    - name: Display null route configuration\n      debug:\n        msg: \"Null route configuration: {{ null_route.commands | default('No changes') }}\"\n        \n    - name: Remove a static route (example)\n      cisco.ios.ios_config:\n        lines:\n          - no ip route 203.0.113.0 255.255.255.0 192.168.20.254\n      register: route_removal\n      ignore_errors: yes\n      \n    - name: Display route removal\n      debug:\n        msg: \"Route removal: {{ route_removal.commands | default('No changes') }}\"

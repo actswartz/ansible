@@ -18,5 +18,5 @@ ssh sX@ng.onecld.us
 ###Password is front instructor
 
 then:
-ssh admin@csr1000v-pod-08.localdomain
+ssh admin@csr1000v-pod-0X.localdomain
  

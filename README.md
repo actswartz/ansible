@@ -8,10 +8,11 @@ ssh sX@ng.1cld.us
 cd ansible
 source myenv/bin/activate
 
------------------------------
-### Open another Terminal Window
 
-ssh sX@ng.1cld.us
+-----------------------------
+### Open a Second Terminal Window Following the instructions above
+
+After login To that second session window, we are then going to SSH again from that window. 
 
 ### Replace the X with your student number
 

@@ -15,6 +15,8 @@ Connect to Cisco SD-WAN vManage controller via REST API and discover all SD-WAN 
 - **Password**: [Provided by instructor]
 - **Version**: Cisco SD-WAN v20.10
 
+  ### Review the SDWAN-inventory.txt file and put the password in it
+
 ## Method 1: Using Ansible CLI (Ad-hoc Commands)
 
 ### Step 1: Test Basic API Connectivity

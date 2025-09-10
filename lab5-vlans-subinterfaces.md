@@ -84,7 +84,7 @@ csr1000v-pod-01.localdomain | CHANGED => {
     "commands": [
         "interface GigabitEthernet1.10",
         "encapsulation dot1Q 10",
-        "ip address 192.168.10.1 255.255.255.0",
+        "ip address 192.168.110.1 255.255.255.0",
         "description VLAN10-Users"
     ]
 }

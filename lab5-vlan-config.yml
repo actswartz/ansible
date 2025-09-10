@@ -55,19 +55,19 @@
       
     - name: Display parent interface configuration changes
       debug:
-        msg: "Parent interface configuration: {{ parent_interface.commands | default('No changes') }}"
+        msg: "Parent interface configuration: {{ parent_interface.commands | default(['No changes']) | join(', ') }}"
         
     - name: Display VLAN 10 configuration changes
       debug:
-        msg: "VLAN 10 configuration: {{ vlan10_config.commands | default('No changes') }}"
+        msg: "VLAN 10 configuration: {{ vlan10_config.commands | default(['No changes']) | join(', ') }}"
         
     - name: Display VLAN 20 configuration changes
       debug:
-        msg: "VLAN 20 configuration: {{ vlan20_config.commands | default('No changes') }}"
+        msg: "VLAN 20 configuration: {{ vlan20_config.commands | default(['No changes']) | join(', ') }}"
         
     - name: Display VLAN 30 configuration changes
       debug:
-        msg: "VLAN 30 configuration: {{ vlan30_config.commands | default('No changes') }}"
+        msg: "VLAN 30 configuration: {{ vlan30_config.commands | default(['No changes']) | join(', ') }}"
         
     - name: Wait for interfaces to initialize
       pause:
@@ -106,7 +106,7 @@
       
     - name: Display IP routing configuration
       debug:
-        msg: "IP routing configuration: {{ ip_routing.commands | default('No changes') }}"
+        msg: "IP routing configuration: {{ ip_routing.commands | default(['No changes']) | join(', ') }}"
         
     - name: Test connectivity between VLANs
       cisco.ios.ios_ping:
@@ -117,4 +117,4 @@
       
     - name: Display inter-VLAN connectivity test
       debug:
-        msg: "Inter-VLAN ping test: {{ 'SUCCESS' if inter_vlan_ping.packet_loss == '0' else 'FAILED' }}"
+        msg: "Inter-VLAN ping test: {{ 'SUCCESS' if (inter_vlan_ping.packet_loss is defined and inter_vlan_ping.packet_loss == '0') else 'FAILED' }}"

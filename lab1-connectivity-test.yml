@@ -18,20 +18,20 @@
       
     - name: Display device information
       debug:
-        msg: "Device: {{ ansible_net_hostname }}, IOS Version: {{ ansible_net_version }}, Serial: {{ ansible_net_serialnum }}"
+        msg: "Device: {{ ansible_net_hostname | default('Unknown') }}, IOS Version: {{ ansible_net_version | default('Unknown') }}, Serial: {{ ansible_net_serialnum | default('Unknown') }}"
         
     - name: Show memory information
       debug:
-        msg: "Total Memory: {{ ansible_net_memtotal_mb }}MB, Free Memory: {{ ansible_net_memfree_mb }}MB"
+        msg: "Total Memory: {{ ansible_net_memtotal_mb | default('Unknown') }}MB, Free Memory: {{ ansible_net_memfree_mb | default('Unknown') }}MB"
         
     - name: List all interfaces
       debug:
-        msg: "Available interfaces: {{ ansible_net_interfaces.keys() | list }}"
+        msg: "Available interfaces: {{ ansible_net_interfaces.keys() | list if ansible_net_interfaces is defined else 'Not available' }}"
         
     - name: Display uptime
       debug:
-        msg: "Device uptime: {{ ansible_net_uptime }}"
+        msg: "Device uptime: {{ ansible_net_uptime | default('Not available') }}"
         
     - name: Show device model
       debug:
-        msg: "Device model: {{ ansible_net_model }}"
+        msg: "Device model: {{ ansible_net_model | default('Not available') }}"

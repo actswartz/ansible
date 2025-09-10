@@ -48,15 +48,15 @@
       
     - name: Display standard ACL configuration changes
       debug:
-        msg: "Standard ACL configuration: {{ standard_acl.commands | default('No changes') }}"
+        msg: "Standard ACL configuration: {{ standard_acl.commands | default(['No changes']) | join(', ') }}"
         
     - name: Display extended ACL WEB_TRAFFIC changes
       debug:
-        msg: "Extended ACL WEB_TRAFFIC: {{ extended_acl_web.commands | default('No changes') }}"
+        msg: "Extended ACL WEB_TRAFFIC: {{ extended_acl_web.commands | default(['No changes']) | join(', ') }}"
         
     - name: Display extended ACL DENY_TELNET changes
       debug:
-        msg: "Extended ACL DENY_TELNET: {{ extended_acl_telnet.commands | default('No changes') }}"
+        msg: "Extended ACL DENY_TELNET: {{ extended_acl_telnet.commands | default(['No changes']) | join(', ') }}"
         
     - name: Apply standard ACL to GigabitEthernet2 inbound
       cisco.ios.ios_config:
@@ -74,11 +74,11 @@
       
     - name: Display ACL application changes for GE2
       debug:
-        msg: "GE2 ACL application: {{ acl_apply_ge2.commands | default('No changes') }}"
+        msg: "GE2 ACL application: {{ acl_apply_ge2.commands | default(['No changes']) | join(', ') }}"
         
     - name: Display ACL application changes for GE3
       debug:
-        msg: "GE3 ACL application: {{ acl_apply_ge3.commands | default('No changes') }}"
+        msg: "GE3 ACL application: {{ acl_apply_ge3.commands | default(['No changes']) | join(', ') }}"
         
     - name: Verify ACL configuration and application
       cisco.ios.ios_command:
@@ -109,4 +109,4 @@
       
     - name: Display numbered ACL configuration
       debug:
-        msg: "Numbered ACL configuration: {{ numbered_acl.commands | default('No changes') }}"
+        msg: "Numbered ACL configuration: {{ numbered_acl.commands | default(['No changes']) | join(', ') }}"

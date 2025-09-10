@@ -35,11 +35,11 @@
       
     - name: Display OSPF process configuration changes
       debug:
-        msg: "OSPF Process configuration: {{ ospf_process.commands | default('No changes') }}"
+        msg: "OSPF Process configuration: {{ ospf_process.commands | default(['No changes']) | join(', ') }}"
         
     - name: Display OSPF network configuration changes
       debug:
-        msg: "OSPF Network configuration: {{ ospf_networks.commands | default('No changes') }}"
+        msg: "OSPF Network configuration: {{ ospf_networks.commands | default(['No changes']) | join(', ') }}"
         
     - name: Wait for OSPF to initialize
       pause:
@@ -80,4 +80,4 @@
       
     - name: Display OSPF interface configuration changes
       debug:
-        msg: "OSPF Interface configuration: {{ ospf_interface_config.commands | default('No changes') }}"
+        msg: "OSPF Interface configuration: {{ ospf_interface_config.commands | default(['No changes']) | join(', ') }}"

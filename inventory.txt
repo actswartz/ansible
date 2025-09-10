@@ -1,0 +1,11 @@
+csr1000v-pod-01.localdomain ansible_user=admin ansible_password=Cisco123 
+
+[csr]
+csr1000v-pod-01.localdomain
+
+[csr:vars]
+ansible_connection=network_cli
+ansible_network_os=ios
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3

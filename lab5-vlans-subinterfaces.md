@@ -22,7 +22,7 @@ csr1000v-pod-01.localdomain
 ### Step 1: View Current Interface Configuration
 Check existing interface and VLAN configuration:
 ```bash
-ansible csr -i inventory.txt -m cisco.ios.ios_command -a "commands='show interfaces trunk,show ip interface brief'"
+ansible csr -i inventory.txt -m cisco.ios.ios_command -a "commands='show interfaces,show ip interface brief'"
 ```
 
 ### Step 2: Configure Subinterface for VLAN 10

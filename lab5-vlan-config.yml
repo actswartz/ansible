@@ -31,7 +31,7 @@
         parents: interface GigabitEthernet1.10
         lines:
           - encapsulation dot1Q 10
-          - ip address 192.168.10.1 255.255.255.0
+          - ip address 192.168.110.1 255.255.255.0
           - description VLAN10-Users
       register: vlan10_config
       
@@ -40,7 +40,7 @@
         parents: interface GigabitEthernet1.20
         lines:
           - encapsulation dot1Q 20
-          - ip address 192.168.20.1 255.255.255.0
+          - ip address 192.168.120.1 255.255.255.0
           - description VLAN20-Servers
       register: vlan20_config
       
@@ -49,7 +49,7 @@
         parents: interface GigabitEthernet1.30
         lines:
           - encapsulation dot1Q 30
-          - ip address 192.168.30.1 255.255.255.0
+          - ip address 192.168.130.1 255.255.255.0
           - description VLAN30-Management
       register: vlan30_config
       
@@ -110,7 +110,7 @@
         
     - name: Test connectivity between VLANs
       cisco.ios.ios_ping:
-        dest: 192.168.20.1
+        dest: 192.168.120.1
         source: 192.168.10.1
       register: inter_vlan_ping
       ignore_errors: yes

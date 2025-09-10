@@ -1,0 +1,4 @@
+csr1000v-pod-01.localdomain ansible_user=admin ansible_password=Cisco123 
+
+[csr]
+csr1000v-pod-01.localdomain

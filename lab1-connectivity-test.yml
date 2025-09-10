@@ -1,0 +1,37 @@
+---
+- name: Lab 1 - Basic Connectivity Test
+  hosts: csr
+  connection: network_cli
+  gather_facts: no
+  
+  vars:
+    ansible_network_os: ios
+    
+  tasks:
+    - name: Gather device facts
+      cisco.ios.ios_facts:
+        gather_subset: 
+          - default
+          - hardware
+          - interfaces
+      register: device_facts
+      
+    - name: Display device information
+      debug:
+        msg: "Device: {{ ansible_net_hostname }}, IOS Version: {{ ansible_net_version }}, Serial: {{ ansible_net_serialnum }}"
+        
+    - name: Show memory information
+      debug:
+        msg: "Total Memory: {{ ansible_net_memtotal_mb }}MB, Free Memory: {{ ansible_net_memfree_mb }}MB"
+        
+    - name: List all interfaces
+      debug:
+        msg: "Available interfaces: {{ ansible_net_interfaces.keys() | list }}"
+        
+    - name: Display uptime
+      debug:
+        msg: "Device uptime: {{ ansible_net_uptime }}"
+        
+    - name: Show device model
+      debug:
+        msg: "Device model: {{ ansible_net_model }}"

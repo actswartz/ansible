@@ -3,7 +3,7 @@
 `ssh sX@ng.1cld.us`
 
 ### Replace the X with your student number
-### Password is front instructor
+### Password is from instructor
 ```
 cd ansible
 source myenv/bin/activate

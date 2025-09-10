@@ -1,24 +1,32 @@
 ---
-- name: SDWAN Lab 1 - Basic SD-WAN Connectivity and Device Discovery
-  hosts: sdwan
+- name: SDWAN Lab 1 - Basic Catalyst WAN Connectivity and Device Discovery
+  hosts: catalyst_wan
   connection: httpapi
   gather_facts: no
   
   vars:
-    ansible_network_os: cisco.sdwan.sdwan
+    ansible_network_os: cisco.catalystwan
     
   tasks:
     - name: Test vManage API connectivity
-      cisco.sdwan.device_info:
+      cisco.catalystwan.devices_info:
+        manager_authentication:
+          url: "https://{{ inventory_hostname }}"
+          username: "{{ ansible_user }}"
+          password: "{{ ansible_password }}"
         device_category: controllers
       register: controllers_info
       
     - name: Display vManage connectivity status
       debug:
-        msg: "Successfully connected to vManage API. Found {{ controllers_info.devices | length }} controllers."
+        msg: "Successfully connected to vManage API. Found {{ controllers_info.devices | default([]) | length }} controllers."
         
-    - name: Discover all SD-WAN devices
-      cisco.sdwan.device_info:
+    - name: Discover all Catalyst WAN devices
+      cisco.catalystwan.devices_info:
+        manager_authentication:
+          url: "https://{{ inventory_hostname }}"
+          username: "{{ ansible_user }}"
+          password: "{{ ansible_password }}"
       register: all_devices
       
     - name: Categorize devices by type
@@ -82,7 +90,11 @@
       when: vedge_devices | length > 10
       
     - name: Get device operational status
-      cisco.sdwan.device_info:
+      cisco.catalystwan.devices_info:
+        manager_authentication:
+          url: "https://{{ inventory_hostname }}"
+          username: "{{ ansible_user }}"
+          password: "{{ ansible_password }}"
         device_category: vedges
       register: vedge_status
       
@@ -104,7 +116,7 @@
     - name: Create device inventory summary
       copy:
         content: |
-          SD-WAN Fabric Device Inventory
+          Catalyst WAN Fabric Device Inventory
           Generated: {{ ansible_date_time.iso8601 | default('Unknown time') }}
           vManage URL: https://sandbox-sdwan-2.cisco.com
           

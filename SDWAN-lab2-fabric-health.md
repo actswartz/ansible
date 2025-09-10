@@ -1,12 +1,12 @@
-# SDWAN Lab 2: SD-WAN Fabric Status and Health Monitoring
+# SDWAN Lab 2: Catalyst WAN Fabric Status and Health Monitoring
 
 ## Objective
-Monitor and analyze SD-WAN fabric health including control plane connections, BFD sessions, and data plane tunnel status using Ansible automation.
+Monitor and analyze Catalyst WAN fabric health including control plane connections, BFD sessions, and data plane tunnel status using Ansible automation.
 
 ## Prerequisites
 - Completed SDWAN Lab 1 (Basic Connectivity and Device Discovery)
-- Understanding of SD-WAN control and data plane concepts
-- Access to SD-WAN sandbox environment
+- Understanding of Catalyst WAN control and data plane concepts
+- Access to Catalyst WAN sandbox environment
 
 ## Lab Environment
 - **vManage URL**: https://sandbox-sdwan-2.cisco.com
@@ -18,25 +18,25 @@ Monitor and analyze SD-WAN fabric health including control plane connections, BF
 ### Step 1: Check Control Plane Connections
 Monitor control connections between devices:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/control/connections method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/control/connections method=GET validate_certs=false"
 ```
 
 ### Step 2: Check BFD Sessions Status
 Get BFD (Bidirectional Forwarding Detection) session information:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/bfd/sessions method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/bfd/sessions method=GET validate_certs=false"
 ```
 
 ### Step 3: Monitor OMP (Overlay Management Protocol) Status
 Check OMP peer relationships:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/omp/peers method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/omp/peers method=GET validate_certs=false"
 ```
 
 ### Step 4: Check Tunnel Health
 Monitor IPsec tunnel status:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/tunnel/statistics method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/tunnel/statistics method=GET validate_certs=false"
 ```
 
 ## Method 2: Using Ansible YAML Playbook
@@ -67,7 +67,7 @@ Check that the following health metrics are collected:
 
 ### CLI Method Output
 ```bash
-$ ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/control/connections method=GET"
+$ ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/control/connections method=GET"
 sandbox-sdwan-2.cisco.com | SUCCESS => {
     "json": {
         "data": [
@@ -97,20 +97,20 @@ ok: [sandbox-sdwan-2.cisco.com] => {
 ```
 
 ## Troubleshooting
-- **API endpoint not found**: Check SD-WAN software version compatibility
+- **API endpoint not found**: Check Catalyst WAN software version compatibility
 - **Empty response data**: Some devices may not have active sessions
 - **Permission denied**: Verify read access to monitoring APIs
 - **Timeout errors**: Check network connectivity to sandbox environment
 
-## Key SD-WAN Health Concepts
+## Key Catalyst WAN Health Concepts
 - **Control Connections**: Links between vEdge and vSmart controllers
-- **BFD Sessions**: Fast failure detection between SD-WAN devices
+- **BFD Sessions**: Fast failure detection between Catalyst WAN devices
 - **OMP Peers**: Routing information exchange relationships
 - **IPsec Tunnels**: Encrypted data plane connections between sites
 - **Health Score**: Overall fabric operational status percentage
 
 ## Learning Objectives
-- Understand SD-WAN fabric health components
+- Understand Catalyst WAN fabric health components
 - Monitor control and data plane connectivity
 - Analyze BFD session health and performance
 - Use REST API endpoints for health monitoring
@@ -118,4 +118,4 @@ ok: [sandbox-sdwan-2.cisco.com] => {
 - Identify fabric connectivity issues
 
 ## Next Steps
-Proceed to SDWAN Lab 3: Policy and Template Analysis to examine SD-WAN policies and configurations.
+Proceed to SDWAN Lab 3: Policy and Template Analysis to examine Catalyst WAN policies and configurations.

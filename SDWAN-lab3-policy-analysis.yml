@@ -1,11 +1,11 @@
 ---
 - name: SDWAN Lab 3 - Policy and Template Analysis
-  hosts: sdwan
+  hosts: catalyst_wan
   connection: httpapi
   gather_facts: yes
   
   vars:
-    ansible_network_os: cisco.sdwan.sdwan
+    ansible_network_os: cisco.catalystwan
     vmanage_host: "{{ inventory_hostname }}"
     base_url: "https://{{ vmanage_host }}/dataservice"
     
@@ -79,7 +79,7 @@
     - name: Display policy summary
       debug:
         msg: |
-          === SD-WAN POLICY INVENTORY ===
+          === CATALYST WAN POLICY INVENTORY ===
           Centralized Policies: {{ total_centralized_policies }}
           Device Templates: {{ total_device_templates }}
           Feature Templates: {{ total_feature_templates }}
@@ -170,7 +170,7 @@
     - name: Create comprehensive policy report
       copy:
         content: |
-          SD-WAN Policy and Template Analysis Report
+          Catalyst WAN Policy and Template Analysis Report
           Generated: {{ ansible_date_time.iso8601 | default('Unknown time') }}
           vManage: {{ vmanage_host }}
           

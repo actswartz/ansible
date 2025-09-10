@@ -1,11 +1,11 @@
 ---
 - name: SDWAN Lab 5 - Security and Compliance Reporting
-  hosts: sdwan
+  hosts: catalyst_wan
   connection: httpapi
   gather_facts: yes
   
   vars:
-    ansible_network_os: cisco.sdwan.sdwan
+    ansible_network_os: cisco.catalystwan
     vmanage_host: "{{ inventory_hostname }}"
     base_url: "https://{{ vmanage_host }}/dataservice"
     
@@ -214,7 +214,7 @@
       debug:
         msg: |
           ====================================
-          SD-WAN SECURITY & COMPLIANCE SUMMARY
+          CATALYST WAN SECURITY & COMPLIANCE SUMMARY
           ====================================
           Overall Security Score: {{ overall_security_score | default('N/A') }}%
           
@@ -269,7 +269,7 @@
     - name: Create comprehensive security compliance report
       copy:
         content: |
-          SD-WAN Security and Compliance Audit Report
+          Catalyst WAN Security and Compliance Audit Report
           Generated: {{ ansible_date_time.iso8601 | default('Unknown time') }}
           vManage: {{ vmanage_host }}
           
@@ -406,9 +406,9 @@
           Security compliance report saved to:
           ./SDWAN-security-compliance-{{ ansible_date_time.epoch | default('timestamp') }}.txt
           
-          You have successfully completed all 5 SD-WAN labs:
-          ✓ Lab 1: Basic SD-WAN Connectivity and Device Discovery
-          ✓ Lab 2: SD-WAN Fabric Status and Health Monitoring  
+          You have successfully completed all 5 Catalyst WAN labs:
+          ✓ Lab 1: Basic Catalyst WAN Connectivity and Device Discovery
+          ✓ Lab 2: Catalyst WAN Fabric Status and Health Monitoring  
           ✓ Lab 3: Policy and Template Analysis
           ✓ Lab 4: Network Performance and Statistics Monitoring
           ✓ Lab 5: Security and Compliance Reporting
@@ -416,10 +416,10 @@
           Final Security Score: {{ overall_security_score | default('N/A') }}%
           
           You now have comprehensive experience with:
-          - SD-WAN REST API automation using Ansible
+          - Catalyst WAN REST API automation using Ansible
           - Network fabric health monitoring and analysis
           - Policy and template management workflows
           - Performance monitoring and optimization
           - Security compliance auditing and reporting
           
-          Excellent work on mastering SD-WAN automation! 🚀
+          Excellent work on mastering Catalyst WAN automation! 🚀

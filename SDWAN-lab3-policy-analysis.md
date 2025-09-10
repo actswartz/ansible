@@ -1,11 +1,11 @@
 # SDWAN Lab 3: Policy and Template Analysis
 
 ## Objective
-Analyze SD-WAN centralized policies, device templates, and feature templates to understand network configuration and policy enforcement using Ansible automation.
+Analyze Catalyst WAN centralized policies, device templates, and feature templates to understand network configuration and policy enforcement using Ansible automation.
 
 ## Prerequisites
 - Completed SDWAN Lab 2 (Fabric Health Monitoring)
-- Understanding of SD-WAN policy concepts
+- Understanding of Catalyst WAN policy concepts
 - Familiarity with centralized policy management
 
 ## Lab Environment
@@ -18,25 +18,25 @@ Analyze SD-WAN centralized policies, device templates, and feature templates to 
 ### Step 1: Get Centralized Policies
 Retrieve all centralized policies:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/policy/vedge method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/policy/vedge method=GET validate_certs=false"
 ```
 
 ### Step 2: Get Device Templates
 List all device templates:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/device method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/device method=GET validate_certs=false"
 ```
 
 ### Step 3: Get Feature Templates
 Retrieve feature template information:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/feature method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/feature method=GET validate_certs=false"
 ```
 
 ### Step 4: Get Application-Aware Routing Policies
 Check AAR (Application-Aware Routing) policies:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/policy/definition/app-route method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/policy/definition/app-route method=GET validate_certs=false"
 ```
 
 ## Method 2: Using Ansible YAML Playbook
@@ -67,7 +67,7 @@ Check that the following policy information is collected:
 
 ### CLI Method Output
 ```bash
-$ ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/policy/vedge method=GET"
+$ ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/policy/vedge method=GET"
 sandbox-sdwan-2.cisco.com | SUCCESS => {
     "json": {
         "data": [
@@ -102,7 +102,7 @@ changed: [localhost]
 - **Access denied**: Verify read permissions for policy APIs
 - **Large response**: Some environments may have many templates
 
-## Key SD-WAN Policy Concepts
+## Key Catalyst WAN Policy Concepts
 - **Centralized Policy**: Global policies applied across the fabric
 - **Device Templates**: Complete device configuration templates
 - **Feature Templates**: Modular configuration components
@@ -111,7 +111,7 @@ changed: [localhost]
 - **QoS Policies**: Traffic prioritization and bandwidth management
 
 ## Learning Objectives
-- Understand SD-WAN policy architecture and hierarchy
+- Understand Catalyst WAN policy architecture and hierarchy
 - Analyze centralized vs localized policy configuration
 - Examine device and feature template structures
 - Review security and QoS policy implementations

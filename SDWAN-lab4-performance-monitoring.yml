@@ -1,11 +1,11 @@
 ---
 - name: SDWAN Lab 4 - Network Performance and Statistics Monitoring
-  hosts: sdwan
+  hosts: catalyst_wan
   connection: httpapi
   gather_facts: yes
   
   vars:
-    ansible_network_os: cisco.sdwan.sdwan
+    ansible_network_os: cisco.catalystwan
     vmanage_host: "{{ inventory_hostname }}"
     base_url: "https://{{ vmanage_host }}/dataservice"
     
@@ -169,7 +169,7 @@
       debug:
         msg: |
           ====================================
-          SD-WAN NETWORK PERFORMANCE SUMMARY
+          CATALYST WAN NETWORK PERFORMANCE SUMMARY
           ====================================
           Overall Health Score: {{ overall_health | default('N/A') }}%
           
@@ -189,7 +189,7 @@
     - name: Create performance monitoring report
       copy:
         content: |
-          SD-WAN Network Performance Monitoring Report
+          Catalyst WAN Network Performance Monitoring Report
           Generated: {{ ansible_date_time.iso8601 | default('Unknown time') }}
           vManage: {{ vmanage_host }}
           

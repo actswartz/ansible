@@ -1,12 +1,12 @@
 # SDWAN Lab 4: Network Performance and Statistics Monitoring
 
 ## Objective
-Monitor and analyze SD-WAN network performance metrics including interface statistics, application-aware routing data, and quality of experience measurements using Ansible automation.
+Monitor and analyze Catalyst WAN network performance metrics including interface statistics, application-aware routing data, and quality of experience measurements using Ansible automation.
 
 ## Prerequisites
 - Completed SDWAN Lab 3 (Policy and Template Analysis)
 - Understanding of network performance metrics
-- Familiarity with SD-WAN application-aware routing
+- Familiarity with Catalyst WAN application-aware routing
 
 ## Lab Environment
 - **vManage URL**: https://sandbox-sdwan-2.cisco.com
@@ -18,25 +18,25 @@ Monitor and analyze SD-WAN network performance metrics including interface stati
 ### Step 1: Get Interface Statistics
 Collect interface utilization and statistics:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/interface/stats method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/interface/stats method=GET validate_certs=false"
 ```
 
 ### Step 2: Monitor Application-Aware Routing Metrics
 Get AAR (Application-Aware Routing) performance data:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/app-route/statistics method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/app-route/statistics method=GET validate_certs=false"
 ```
 
 ### Step 3: Check Tunnel Utilization
 Monitor IPsec tunnel bandwidth usage:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/tunnel/interface method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/tunnel/interface method=GET validate_certs=false"
 ```
 
 ### Step 4: Get Quality of Experience Data
 Retrieve QoE (Quality of Experience) metrics:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/app-route/stats method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/app-route/stats method=GET validate_certs=false"
 ```
 
 ## Method 2: Using Ansible YAML Playbook
@@ -67,7 +67,7 @@ Check that the following performance data is collected:
 
 ### CLI Method Output
 ```bash
-$ ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/interface/stats method=GET"
+$ ansible catalyst_wan -i SDWAN-inventory.txt -m cisco.catalystwan.devices_info -a '{"manager_authentication": {"url": "https://sandbox-sdwan-2.cisco.com", "username": "devnetuser", "password": "[password]"}}'
 sandbox-sdwan-2.cisco.com | SUCCESS => {
     "json": {
         "data": [
@@ -103,7 +103,7 @@ ok: [sandbox-sdwan-2.cisco.com] => {
 - **High latency queries**: Performance APIs may take time to respond
 - **Missing applications**: Not all applications may be visible in AAR
 
-## Key SD-WAN Performance Concepts
+## Key Catalyst WAN Performance Concepts
 - **Interface Utilization**: Bandwidth usage percentage on WAN interfaces
 - **Application-Aware Routing**: Performance-based path selection metrics
 - **Quality of Experience (QoE)**: End-user application performance scoring
@@ -112,7 +112,7 @@ ok: [sandbox-sdwan-2.cisco.com] => {
 - **Path Performance**: Latency, loss, and jitter measurements per path
 
 ## Learning Objectives
-- Monitor SD-WAN network performance metrics
+- Monitor Catalyst WAN network performance metrics
 - Analyze application-aware routing effectiveness
 - Understand quality of experience measurements
 - Use performance data for network optimization

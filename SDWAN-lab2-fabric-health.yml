@@ -1,11 +1,11 @@
 ---
-- name: SDWAN Lab 2 - SD-WAN Fabric Status and Health Monitoring
-  hosts: sdwan
+- name: SDWAN Lab 2 - Catalyst WAN Fabric Status and Health Monitoring
+  hosts: catalyst_wan
   connection: httpapi
   gather_facts: yes
   
   vars:
-    ansible_network_os: cisco.sdwan.sdwan
+    ansible_network_os: cisco.catalystwan
     vmanage_host: "{{ inventory_hostname }}"
     base_url: "https://{{ vmanage_host }}/dataservice"
     
@@ -143,7 +143,7 @@
       debug:
         msg: |
           ====================================
-          SD-WAN FABRIC HEALTH SUMMARY
+          CATALYST WAN FABRIC HEALTH SUMMARY
           ====================================
           Overall Health Score: {{ fabric_health_score }}%
           
@@ -156,7 +156,7 @@
     - name: Create fabric health report
       copy:
         content: |
-          SD-WAN Fabric Health Report
+          Catalyst WAN Fabric Health Report
           Generated: {{ ansible_date_time.iso8601 | default('Unknown time') }}
           vManage: {{ vmanage_host }}
           

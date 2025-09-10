@@ -1,11 +1,11 @@
 # SDWAN Lab 5: Security and Compliance Reporting
 
 ## Objective
-Analyze SD-WAN security posture and compliance status including certificate management, security policies, and audit reporting using Ansible automation.
+Analyze Catalyst WAN security posture and compliance status including certificate management, security policies, and audit reporting using Ansible automation.
 
 ## Prerequisites
 - Completed SDWAN Lab 4 (Network Performance and Statistics Monitoring)
-- Understanding of SD-WAN security architecture
+- Understanding of Catalyst WAN security architecture
 - Familiarity with PKI and certificate management
 
 ## Lab Environment
@@ -18,25 +18,25 @@ Analyze SD-WAN security posture and compliance status including certificate mana
 ### Step 1: Check Certificate Status
 Monitor certificate validity and expiration:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/certificate/stats method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/certificate/stats method=GET validate_certs=false"
 ```
 
 ### Step 2: Get Security Policy Status
 Check security policy enforcement:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/policy/security method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/template/policy/security method=GET validate_certs=false"
 ```
 
 ### Step 3: Monitor Authentication Events
 Review authentication and access logs:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/security/events method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/device/security/events method=GET validate_certs=false"
 ```
 
 ### Step 4: Check Compliance Status
 Get overall compliance and audit information:
 ```bash
-ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/system/audit method=GET validate_certs=false"
+ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/system/audit method=GET validate_certs=false"
 ```
 
 ## Method 2: Using Ansible YAML Playbook
@@ -67,7 +67,7 @@ Check that the following security data is collected:
 
 ### CLI Method Output
 ```bash
-$ ansible sdwan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/certificate/stats method=GET"
+$ ansible catalyst_wan -i SDWAN-inventory.txt -m uri -a "url=https://sandbox-sdwan-2.cisco.com/dataservice/certificate/stats method=GET"
 sandbox-sdwan-2.cisco.com | SUCCESS => {
     "json": {
         "data": [
@@ -102,7 +102,7 @@ ok: [sandbox-sdwan-2.cisco.com] => {
 - **Policy data missing**: Check if security policies are configured
 - **Audit log access**: Some audit APIs may require elevated permissions
 
-## Key SD-WAN Security Concepts
+## Key Catalyst WAN Security Concepts
 - **PKI (Public Key Infrastructure)**: Certificate-based device authentication
 - **Certificate Lifecycle**: Automatic certificate provisioning and renewal
 - **Security Policies**: Centralized firewall and access control rules
@@ -111,7 +111,7 @@ ok: [sandbox-sdwan-2.cisco.com] => {
 - **Zero Trust Architecture**: Default-deny security posture
 
 ## Learning Objectives
-- Understand SD-WAN security architecture and components
+- Understand Catalyst WAN security architecture and components
 - Monitor certificate lifecycle and PKI health
 - Analyze security policy effectiveness
 - Generate automated compliance reports
@@ -119,11 +119,11 @@ ok: [sandbox-sdwan-2.cisco.com] => {
 - Implement security best practices and recommendations
 
 ## Lab Series Summary
-Congratulations! You have completed all 5 SD-WAN labs covering:
+Congratulations! You have completed all 5 Catalyst WAN labs covering:
 1. **Basic Connectivity** - API access and device discovery
 2. **Fabric Health** - Control and data plane monitoring  
 3. **Policy Analysis** - Configuration and template management
 4. **Performance Monitoring** - Network metrics and optimization
 5. **Security Compliance** - Security posture and audit reporting
 
-These labs provide comprehensive experience with SD-WAN automation using Ansible for monitoring, analysis, and reporting in read-only environments.
+These labs provide comprehensive experience with Catalyst WAN automation using Ansible for monitoring, analysis, and reporting in read-only environments.

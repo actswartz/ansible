@@ -28,13 +28,13 @@ ansible csr -i inventory.txt -m cisco.ios.ios_command -a "commands='show interfa
 ### Step 2: Configure Subinterface for VLAN 10
 Create subinterface for VLAN 10:
 ```bash
-ansible csr -i inventory.txt -m cisco.ios.ios_config -a "lines='encapsulation dot1Q 10,ip address 192.168.10.1 255.255.255.0,description VLAN10-Users' parents='interface GigabitEthernet1.10'"
+ansible csr -i inventory.txt -m cisco.ios.ios_config -a "lines='encapsulation dot1Q 10,ip address 192.168.110.1 255.255.255.0,description VLAN10-Users' parents='interface GigabitEthernet1.10'"
 ```
 
 ### Step 3: Configure Subinterface for VLAN 20
 Create subinterface for VLAN 20:
 ```bash
-ansible csr -i inventory.txt -m cisco.ios.ios_config -a "lines='encapsulation dot1Q 20,ip address 192.168.20.1 255.255.255.0,description VLAN20-Servers' parents='interface GigabitEthernet1.20'"
+ansible csr -i inventory.txt -m cisco.ios.ios_config -a "lines='encapsulation dot1Q 20,ip address 192.168.120.1 255.255.255.0,description VLAN20-Servers' parents='interface GigabitEthernet1.20'"
 ```
 
 ### Step 4: Configure Trunk Interface
@@ -61,9 +61,9 @@ The playbook will:
 
 ### Step 3: Validate Results
 Check that the following configurations are applied:
-- GigabitEthernet1.10 configured for VLAN 10 (192.168.10.1/24)
-- GigabitEthernet1.20 configured for VLAN 20 (192.168.20.1/24)
-- GigabitEthernet1.30 configured for VLAN 30 (192.168.30.1/24)
+- GigabitEthernet1.10 configured for VLAN 10 (192.168.110.1/24)
+- GigabitEthernet1.20 configured for VLAN 20 (192.168.120.1/24)
+- GigabitEthernet1.30 configured for VLAN 30 (192.168.130.1/24)
 - All subinterfaces are operational
 
 ## Expected Output

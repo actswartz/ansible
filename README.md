@@ -1,10 +1,10 @@
-##Welcome 
+##W elcome 
 
 ssh sX@ng.onecld.us
 
-#Replace the X with your student number
+# Replace the X with your student number
 
-#Password is front instructor
+# Password is front instructor
 
 cd ansible
 source myenv/bin/activate
@@ -13,7 +13,7 @@ source myenv/bin/activate
 
 ssh sX@ng.onecld.us
 
-#Replace the X with your student number
+# Replace the X with your student number
 
 #Password is front instructor
 

@@ -1,49 +1,62 @@
 ---
+# This playbook connects to a Cisco CSR1000V router and shows detailed interface information
+# It displays interface names, their up/down status, and MTU (Maximum Transmission Unit) values
+
 - name: Get CSR1000V Interface Status and MTU Information
-  hosts: csr
-  gather_facts: no
-  connection: network_cli
+  hosts: csr                    # Target the 'csr' group from inventory file
+  gather_facts: no              # Skip gathering system facts to speed up execution
+  connection: network_cli       # Use CLI connection for network devices
 
   tasks:
+    # Task 1: Get a quick summary of all interfaces and their IP addresses
     - name: Get interface brief information
-      cisco.ios.ios_command:
+      cisco.ios.ios_command:     # Use Cisco IOS command module
         commands:
-          - show ip interface brief
-      register: interface_brief
+          - show ip interface brief  # Shows interface names, IPs, and basic status
+      register: interface_brief  # Store output in 'interface_brief' variable
 
+    # Task 2: Get detailed information about all interfaces (including MTU)
     - name: Get detailed interface information with MTU
-      cisco.ios.ios_command:
+      cisco.ios.ios_command:     # Use Cisco IOS command module again
         commands:
-          - show interfaces
-      register: interface_details
+          - show interfaces       # Shows comprehensive interface details including MTU
+      register: interface_details # Store detailed output in 'interface_details' variable
 
+    # Task 3: Display the brief interface summary first
     - name: Display interface brief status
-      debug:
-        msg: |
+      debug:                     # Print information to screen
+        msg: |                   # The | symbol allows multi-line text
           === INTERFACE STATUS SUMMARY ===
-          {{ interface_brief.stdout[0] }}
+          {{ interface_brief.stdout[0] }}  # Display the command output
 
+    # Task 4: Show a header for the detailed processing section
     - name: Parse and display interface MTU and status
       debug:
         msg: |
           === INTERFACE DETAILS (Name, MTU, Status) ===
           Processing interface details for MTU and line protocol status...
       
+    # Task 5: Display the raw detailed interface information (for reference)
     - name: Show detailed interface information
       debug:
-        var: interface_details.stdout[0]
+        var: interface_details.stdout[0]  # 'var' displays variable contents
         
+    # Task 6: Extract specific information using pattern matching
     - name: Extract key interface information
-      set_fact:
+      set_fact:                  # Create a new variable with processed data
+        # This complex regex pattern finds interface names, status, and MTU values
+        # \\S+ matches interface name, (up|down|administratively down) matches status
+        # \\d+ matches MTU number
         interface_summary: "{{ interface_details.stdout[0] | regex_findall('(\\S+) is (up|down|administratively down).*\\n.*MTU (\\d+)') }}"
       
+    # Task 7: Display each interface's information in a clean format
     - name: Display formatted interface summary
       debug:
-        msg: |
+        msg: |                   # Format output nicely for each interface
           === INTERFACE SUMMARY ===
-          Interface: {{ item[0] }}
-          Status: {{ item[1] }}
-          MTU: {{ item[2] }} bytes
+          Interface: {{ item[0] }}    # item[0] is interface name
+          Status: {{ item[1] }}       # item[1] is up/down status  
+          MTU: {{ item[2] }} bytes    # item[2] is MTU value
           ---
-      loop: "{{ interface_summary }}"
-      when: interface_summary is defined and interface_summary | length > 0
+      loop: "{{ interface_summary }}"  # Loop through each interface found
+      when: interface_summary is defined and interface_summary | length > 0  # Only run if we found interfaces

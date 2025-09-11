@@ -1,0 +1,33 @@
+---
+# Simple playbook to get basic device information from CSR1000V
+# Shows just the hostname and interface summary
+
+- name: Get Basic CSR1000V Information (Easy Version)
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+
+  tasks:
+    # Get hostname
+    - name: Get device hostname
+      cisco.ios.ios_command:
+        commands:
+          - show running-config | include hostname
+      register: hostname
+
+    # Get interface summary
+    - name: Get interface summary
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+      register: interfaces
+
+    # Show hostname
+    - name: Show device name
+      debug:
+        msg: "Device: {{ hostname.stdout[0] }}"
+
+    # Show interfaces
+    - name: Show interfaces
+      debug:
+        msg: "{{ interfaces.stdout[0] }}"

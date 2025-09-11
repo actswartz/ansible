@@ -1,0 +1,80 @@
+---
+- name: Toggle CSR1000V Interface States (Up->Down, Down->Up)
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+
+  tasks:
+    - name: Get current interface status
+      cisco.ios.ios_command:
+        commands:
+          - show interfaces
+      register: interface_status
+
+    - name: Parse interface states
+      set_fact:
+        interfaces_up: "{{ interface_status.stdout[0] | regex_findall('(\\S+) is up, line protocol is up') | flatten }}"
+        interfaces_down: "{{ interface_status.stdout[0] | regex_findall('(\\S+) is administratively down') | flatten }}"
+
+    - name: Display current interface states
+      debug:
+        msg: |
+          === CURRENT INTERFACE STATES ===
+          Interfaces UP: {{ interfaces_up | join(', ') if interfaces_up else 'None' }}
+          Interfaces DOWN (admin): {{ interfaces_down | join(', ') if interfaces_down else 'None' }}
+
+    - name: Shutdown interfaces that are currently UP
+      cisco.ios.ios_config:
+        lines:
+          - shutdown
+        parents: "interface {{ item }}"
+      loop: "{{ interfaces_up }}"
+      when: 
+        - interfaces_up is defined
+        - interfaces_up | length > 0
+        - item != "Loopback0"  # Protect loopback interface
+      register: shutdown_results
+
+    - name: Enable interfaces that are currently DOWN (administratively down)
+      cisco.ios.ios_config:
+        lines:
+          - no shutdown
+        parents: "interface {{ item }}"
+      loop: "{{ interfaces_down }}"
+      when:
+        - interfaces_down is defined 
+        - interfaces_down | length > 0
+      register: enable_results
+
+    - name: Display shutdown actions
+      debug:
+        msg: "SHUTDOWN: Interface {{ item }} has been shut down"
+      loop: "{{ interfaces_up }}"
+      when: 
+        - interfaces_up is defined
+        - interfaces_up | length > 0
+        - item != "Loopback0"
+
+    - name: Display enable actions  
+      debug:
+        msg: "ENABLED: Interface {{ item }} has been enabled (no shutdown)"
+      loop: "{{ interfaces_down }}"
+      when:
+        - interfaces_down is defined
+        - interfaces_down | length > 0
+
+    - name: Wait for interface state changes to take effect
+      pause:
+        seconds: 5
+
+    - name: Verify new interface states
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+      register: final_status
+
+    - name: Display final interface status
+      debug:
+        msg: |
+          === FINAL INTERFACE STATUS ===
+          {{ final_status.stdout[0] }}

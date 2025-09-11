@@ -95,7 +95,7 @@ To retrieve a high-level Quality of Experience (QoE) score, which translates raw
 
 **Command:**
 ```bash
-ansible vmanage1 -i ansible-collection-sdwan/inventory.ini -m uri -a "url=https://10.10.20.90:443/dataservice/device/app-route/stats method=GET validate_certs=false"
+ansible vmanage1 -i ansible-collection-sdwan/inventory.ini -m uri -a "url=https://10.10.20.90:443/dataservice/statistics/approute/qoe method=GET validate_certs=false"
 ```
 
 **Expected Output Explanation:**

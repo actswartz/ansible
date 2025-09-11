@@ -1,0 +1,138 @@
+---
+# This interactive playbook configures an IP address on a Cisco NXOS interface
+# It asks the user which interface to configure and what IP/subnet mask to assign
+# WARNING: This makes configuration changes - use carefully!
+
+- name: Interactive NXOS Interface IP Configuration
+  hosts: nxos                   # Target the 'nxos' group from inventory
+  gather_facts: no              # Skip fact gathering for faster execution
+  connection: network_cli       # Use CLI connection for network devices
+
+  # These prompts will ask the user for input when the playbook starts
+  vars_prompt:
+    - name: target_interface    # Variable name to store the interface
+      prompt: |
+        Which interface do you want to configure?
+        Examples: Ethernet1/1, Ethernet1/2, Vlan10, loopback0
+        Enter interface name
+      private: no               # Show what the user types
+
+    - name: ip_address          # Variable name to store the IP address
+      prompt: "Enter the IP address (e.g., 192.168.1.10)"
+      private: no               # Show what the user types
+
+    - name: subnet_mask         # Variable name to store the subnet mask
+      prompt: |
+        Enter the subnet mask in one of these formats:
+        - Dotted decimal (e.g., 255.255.255.0)
+        - CIDR notation (e.g., 24)
+        Subnet mask
+      private: no               # Show what the user types
+
+  tasks:
+    # Task 1: Display what the user entered for confirmation
+    - name: Display configuration summary
+      debug:                    # Show the user what will be configured
+        msg: |
+          === CONFIGURATION SUMMARY ===
+          Interface: {{ target_interface }}
+          IP Address: {{ ip_address }}
+          Subnet Mask: {{ subnet_mask }}
+          
+          This will configure: {{ target_interface }} with {{ ip_address }}/{{ subnet_mask }}
+
+    # Task 2: Ask for final confirmation before making changes
+    - name: Confirm configuration
+      pause:                    # Pause and ask for confirmation
+        prompt: |
+          Are you sure you want to apply this configuration?
+          Type 'yes' to continue or 'no' to cancel
+      register: confirmation    # Store the user's response
+
+    # Task 3: Exit if user doesn't confirm
+    - name: Exit if not confirmed
+      fail:                     # Stop playbook execution
+        msg: "Configuration cancelled by user"
+      when: confirmation.user_input | lower != 'yes'  # Only fail if not 'yes'
+
+    # Task 4: Convert CIDR notation to dotted decimal if needed
+    - name: Process subnet mask format
+      set_fact:
+        # If user entered a number (CIDR), convert it to dotted decimal
+        final_subnet_mask: >-
+          {%- if subnet_mask | regex_search('^\\d+$') -%}
+            {%- set cidr = subnet_mask | int -%}
+            {%- if cidr == 24 -%}255.255.255.0
+            {%- elif cidr == 25 -%}255.255.255.128
+            {%- elif cidr == 26 -%}255.255.255.192
+            {%- elif cidr == 27 -%}255.255.255.224
+            {%- elif cidr == 28 -%}255.255.255.240
+            {%- elif cidr == 29 -%}255.255.255.248
+            {%- elif cidr == 30 -%}255.255.255.252
+            {%- elif cidr == 16 -%}255.255.0.0
+            {%- elif cidr == 8 -%}255.0.0.0
+            {%- else -%}{{ subnet_mask }}
+            {%- endif -%}
+          {%- else -%}{{ subnet_mask }}
+          {%- endif -%}
+
+    # Task 5: Show the final configuration that will be applied
+    - name: Display final configuration
+      debug:
+        msg: |
+          === FINAL CONFIGURATION ===
+          Configuring {{ target_interface }}:
+          IP: {{ ip_address }}
+          Mask: {{ final_subnet_mask }}
+
+    # Task 6: Configure the interface with the IP address
+    - name: Configure interface IP address
+      cisco.nxos.nxos_config:   # Use NXOS configuration module
+        lines:                  # The configuration commands to apply
+          - ip address {{ ip_address }} {{ final_subnet_mask }}  # Set IP and mask
+          - no shutdown         # Enable the interface
+        parents: interface {{ target_interface }}  # Apply under the interface context
+      register: config_result   # Store the configuration result
+
+    # Task 7: Verify the configuration was applied
+    - name: Verify interface configuration
+      cisco.nxos.nxos_command:  # Run show commands to verify
+        commands:
+          - show interface {{ target_interface }}  # Show interface details
+          - show ip interface brief              # Show IP summary
+      register: verification    # Store verification output
+
+    # Task 8: Display success message and verification
+    - name: Display configuration success
+      debug:
+        msg: |
+          === CONFIGURATION COMPLETED SUCCESSFULLY ===
+          Interface {{ target_interface }} has been configured with:
+          IP Address: {{ ip_address }}
+          Subnet Mask: {{ final_subnet_mask }}
+          
+          Interface Status:
+          {{ verification.stdout[0] }}
+
+    # Task 9: Show IP interface brief for overall status
+    - name: Display IP interface summary
+      debug:
+        msg: |
+          === IP INTERFACE SUMMARY ===
+          {{ verification.stdout[1] }}
+
+    # Task 10: Display helpful next steps
+    - name: Display next steps
+      debug:
+        msg: |
+          === CONFIGURATION COMPLETE ===
+          
+          What you can do next:
+          1. Test connectivity: ping from this interface
+          2. Verify routing: check routing table
+          3. Test applications: ensure services work with new IP
+          
+          To remove this configuration, use:
+          configure terminal
+          interface {{ target_interface }}
+          no ip address {{ ip_address }} {{ final_subnet_mask }}

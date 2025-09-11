@@ -1,6 +1,6 @@
 ---
 - name: SDWAN Lab 3 - Policy and Template Analysis
-  hosts: catalyst_wan
+  hosts: vmanage
   connection: httpapi
   gather_facts: yes
   

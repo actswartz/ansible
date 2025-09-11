@@ -1,82 +1,80 @@
 ---
 - name: SDWAN Lab 2 - Catalyst WAN Fabric Status and Health Monitoring
-  hosts: catalyst_wan
-  connection: httpapi
-  gather_facts: yes
-  
+  hosts: localhost
+  gather_facts: no
+
   vars:
-    ansible_network_os: cisco.catalystwan
-    vmanage_host: "{{ inventory_hostname }}"
-    base_url: "https://{{ vmanage_host }}/dataservice"
-    
+    vmanage_host: "10.10.20.90"
+    username: "admin"
+    password: "C1sco12345"
+    endpoints:
+      - "control/connections"
+      - "bfd/sessions"
+      - "omp/peers"
+
   tasks:
-    - name: Check control plane connections
+    - name: Get authentication token
       uri:
-        url: "{{ base_url }}/device/control/connections"
-        method: GET
-        validate_certs: false
+        url: "https://{{ vmanage_host }}/j_security_check"
+        method: POST
+        body: "j_username={{ username }}&j_password={{ password }}"
+        validate_certs: no
+        return_content: yes
         headers:
-          Content-Type: "application/json"
-      register: control_connections
-      
-    - name: Monitor BFD sessions
-      uri:
-        url: "{{ base_url }}/device/bfd/sessions"
-        method: GET
-        validate_certs: false
-        headers:
-          Content-Type: "application/json"
-      register: bfd_sessions
-      
-    - name: Check OMP peer relationships
-      uri:
-        url: "{{ base_url }}/device/omp/peers"
-        method: GET
-        validate_certs: false
-        headers:
-          Content-Type: "application/json"
-      register: omp_peers
-      
-    - name: Monitor IPsec tunnel status
-      uri:
-        url: "{{ base_url }}/device/tunnel/statistics"
-        method: GET
-        validate_certs: false
-        headers:
-          Content-Type: "application/json"
-      register: tunnel_stats
-      ignore_errors: yes
-      
-    - name: Get device health overview
-      uri:
-        url: "{{ base_url }}/device/health/overview"
-        method: GET
-        validate_certs: false
-        headers:
-          Content-Type: "application/json"
-      register: health_overview
-      ignore_errors: yes
-      
+          Content-Type: "application/x-www-form-urlencoded"
+      register: login
+
+    - name: Set authentication cookie
+      set_fact:
+        auth_cookie: "{{ login.cookies_string }}"
+
+    - name: Get all devices
+      command: >
+        curl -k -X GET --header "Cookie: {{ auth_cookie }}" "https://{{ vmanage_host }}/dataservice/device"
+      register: all_devices_raw
+
+    - name: Parse device list
+      set_fact:
+        all_devices: "{{ all_devices_raw.stdout | from_json }}"
+
+    - name: Initialize health data
+      set_fact:
+        control_connections: []
+        bfd_sessions: []
+        omp_peers: []
+
+    - name: Get health data for each device
+      command: >
+        curl -k -X GET --header "Cookie: {{ auth_cookie }}" "https://{{ vmanage_host }}/dataservice/device/{{ item.1 }}?deviceId={{ item.0['system-ip'] }}"
+      loop: "{{ all_devices.data | product(endpoints) | list }}"
+      register: health_data_raw
+      when: item.0['system-ip'] is defined
+
+    - name: Aggregate health data
+      set_fact:
+        control_connections: "{{ control_connections + (item.stdout | from_json).data }}"
+        bfd_sessions: "{{ bfd_sessions + (item.stdout | from_json).data }}"
+        omp_peers: "{{ omp_peers + (item.stdout | from_json).data }}"
+      loop: "{{ health_data_raw.results }}"
+      when: item.stdout is defined and (item.stdout | from_json).data is defined
+
     - name: Analyze control plane health
       set_fact:
-        total_control_connections: "{{ control_connections.json.data | length }}"
-        up_control_connections: "{{ control_connections.json.data | selectattr('state', 'equalto', 'up') | list | length }}"
-        down_control_connections: "{{ control_connections.json.data | selectattr('state', 'equalto', 'down') | list | length }}"
-      when: control_connections.json.data is defined
-      
+        total_control_connections: "{{ control_connections | length }}"
+        up_control_connections: "{{ control_connections | selectattr('state', 'equalto', 'up') | list | length }}"
+        down_control_connections: "{{ control_connections | selectattr('state', 'equalto', 'down') | list | length }}"
+
     - name: Analyze BFD session health
       set_fact:
-        total_bfd_sessions: "{{ bfd_sessions.json.data | length }}"
-        up_bfd_sessions: "{{ bfd_sessions.json.data | selectattr('state', 'equalto', 'up') | list | length }}"
-        down_bfd_sessions: "{{ bfd_sessions.json.data | selectattr('state', 'equalto', 'down') | list | length }}"
-      when: bfd_sessions.json.data is defined
-      
+        total_bfd_sessions: "{{ bfd_sessions | length }}"
+        up_bfd_sessions: "{{ bfd_sessions | selectattr('state', 'equalto', 'up') | list | length }}"
+        down_bfd_sessions: "{{ bfd_sessions | selectattr('state', 'equalto', 'down') | list | length }}"
+
     - name: Analyze OMP peer health
       set_fact:
-        total_omp_peers: "{{ omp_peers.json.data | length }}"
-        established_omp_peers: "{{ omp_peers.json.data | selectattr('state', 'equalto', 'up') | list | length }}"
-      when: omp_peers.json.data is defined
-      
+        total_omp_peers: "{{ omp_peers | length }}"
+        established_omp_peers: "{{ omp_peers | selectattr('state', 'equalto', 'up') | list | length }}"
+
     - name: Display control plane status
       debug:
         msg: |
@@ -85,7 +83,7 @@
           UP Connections: {{ up_control_connections | default('N/A') }}
           DOWN Connections: {{ down_control_connections | default('N/A') }}
           Health: {{ ((up_control_connections | default(0) | int) * 100 / (total_control_connections | default(1) | int)) | round(1) }}%
-          
+
     - name: Display BFD session status
       debug:
         msg: |
@@ -94,7 +92,7 @@
           UP Sessions: {{ up_bfd_sessions | default('N/A') }}
           DOWN Sessions: {{ down_bfd_sessions | default('N/A') }}
           Health: {{ ((up_bfd_sessions | default(0) | int) * 100 / (total_bfd_sessions | default(1) | int)) | round(1) }}%
-          
+
     - name: Display OMP peer status
       debug:
         msg: |
@@ -102,117 +100,3 @@
           Total OMP Peers: {{ total_omp_peers | default('N/A') }}
           Established Peers: {{ established_omp_peers | default('N/A') }}
           Health: {{ ((established_omp_peers | default(0) | int) * 100 / (total_omp_peers | default(1) | int)) | round(1) }}%
-          
-    - name: Show control connection details
-      debug:
-        msg: "{{ item['system-ip'] | default('Unknown IP') }} (Site {{ item['site-id'] | default('N/A') }}): {{ item.state | default('Unknown') }} to {{ item['peer-type'] | default('Unknown peer') }}"
-      loop: "{{ control_connections.json.data[:10] }}"
-      when: control_connections.json.data is defined and control_connections.json.data | length > 0
-      
-    - name: Show BFD session details
-      debug:
-        msg: "{{ item['system-ip'] | default('Unknown IP') }} -> {{ item['peer-ip'] | default('Unknown peer') }}: {{ item.state | default('Unknown state') }} ({{ item['transitions'] | default('0') }} transitions)"
-      loop: "{{ bfd_sessions.json.data[:5] }}"
-      when: bfd_sessions.json.data is defined and bfd_sessions.json.data | length > 0
-      
-    - name: Identify unhealthy connections
-      set_fact:
-        down_control_list: "{{ control_connections.json.data | selectattr('state', 'equalto', 'down') | list }}"
-        down_bfd_list: "{{ bfd_sessions.json.data | selectattr('state', 'equalto', 'down') | list }}"
-      when: 
-        - control_connections.json.data is defined
-        - bfd_sessions.json.data is defined
-        
-    - name: Display unhealthy control connections
-      debug:
-        msg: "DOWN Control Connection: {{ item['system-ip'] | default('Unknown') }} to {{ item['peer-type'] | default('Unknown') }}"
-      loop: "{{ down_control_list }}"
-      when: down_control_list is defined and down_control_list | length > 0
-      
-    - name: Display unhealthy BFD sessions
-      debug:
-        msg: "DOWN BFD Session: {{ item['system-ip'] | default('Unknown') }} -> {{ item['peer-ip'] | default('Unknown') }}"
-      loop: "{{ down_bfd_list }}"
-      when: down_bfd_list is defined and down_bfd_list | length > 0
-      
-    - name: Calculate overall fabric health score
-      set_fact:
-        fabric_health_score: "{{ (((up_control_connections | default(0) | int) + (up_bfd_sessions | default(0) | int) + (established_omp_peers | default(0) | int)) * 100 / ((total_control_connections | default(1) | int) + (total_bfd_sessions | default(1) | int) + (total_omp_peers | default(1) | int))) | round(1) }}"
-        
-    - name: Display fabric health summary
-      debug:
-        msg: |
-          ====================================
-          CATALYST WAN FABRIC HEALTH SUMMARY
-          ====================================
-          Overall Health Score: {{ fabric_health_score }}%
-          
-          Control Plane: {{ up_control_connections | default(0) }}/{{ total_control_connections | default(0) }} UP
-          BFD Sessions: {{ up_bfd_sessions | default(0) }}/{{ total_bfd_sessions | default(0) }} UP  
-          OMP Peers: {{ established_omp_peers | default(0) }}/{{ total_omp_peers | default(0) }} UP
-          
-          Status: {{ 'HEALTHY' if (fabric_health_score | float) > 95 else 'WARNING' if (fabric_health_score | float) > 80 else 'CRITICAL' }}
-          
-    - name: Create fabric health report
-      copy:
-        content: |
-          Catalyst WAN Fabric Health Report
-          Generated: {{ ansible_date_time.iso8601 | default('Unknown time') }}
-          vManage: {{ vmanage_host }}
-          
-          ====================================
-          OVERALL FABRIC HEALTH: {{ fabric_health_score }}%
-          ====================================
-          
-          CONTROL PLANE HEALTH
-          --------------------
-          Total Connections: {{ total_control_connections | default('N/A') }}
-          UP: {{ up_control_connections | default('N/A') }}
-          DOWN: {{ down_control_connections | default('N/A') }}
-          Success Rate: {{ ((up_control_connections | default(0) | int) * 100 / (total_control_connections | default(1) | int)) | round(1) }}%
-          
-          BFD SESSION HEALTH  
-          ------------------
-          Total Sessions: {{ total_bfd_sessions | default('N/A') }}
-          UP: {{ up_bfd_sessions | default('N/A') }}
-          DOWN: {{ down_bfd_sessions | default('N/A') }}
-          Success Rate: {{ ((up_bfd_sessions | default(0) | int) * 100 / (total_bfd_sessions | default(1) | int)) | round(1) }}%
-          
-          OMP PEER HEALTH
-          ---------------
-          Total Peers: {{ total_omp_peers | default('N/A') }}
-          Established: {{ established_omp_peers | default('N/A') }}
-          Success Rate: {{ ((established_omp_peers | default(0) | int) * 100 / (total_omp_peers | default(1) | int)) | round(1) }}%
-          
-          {% if down_control_list is defined and down_control_list | length > 0 %}
-          FAILED CONTROL CONNECTIONS
-          --------------------------
-          {% for conn in down_control_list %}
-          - {{ conn['system-ip'] | default('Unknown') }} -> {{ conn['peer-type'] | default('Unknown') }}
-          {% endfor %}
-          {% endif %}
-          
-          {% if down_bfd_list is defined and down_bfd_list | length > 0 %}
-          FAILED BFD SESSIONS
-          -------------------
-          {% for session in down_bfd_list %}
-          - {{ session['system-ip'] | default('Unknown') }} -> {{ session['peer-ip'] | default('Unknown') }}
-          {% endfor %}
-          {% endif %}
-          
-          RECOMMENDATIONS
-          ---------------
-          {% if fabric_health_score | float < 95 %}
-          - Investigate failed connections and sessions
-          - Check network connectivity between sites
-          - Verify device configurations and certificates
-          {% else %}
-          - Fabric health is optimal
-          - Continue regular monitoring
-          {% endif %}
-        dest: "./SDWAN-fabric-health-{{ ansible_date_time.epoch | default('timestamp') }}.txt"
-      delegate_to: localhost
-      
-    - name: Display report location
-      debug:
-        msg: "Fabric health report saved to: ./SDWAN-fabric-health-{{ ansible_date_time.epoch | default('timestamp') }}.txt"

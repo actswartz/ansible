@@ -1,4 +1,4 @@
-Here's the corrected Markdown file with proper code blocks:
+
 
 **Lab Guide: Ansible for Cisco IOS XE - VLAN and SVI Configuration**
 

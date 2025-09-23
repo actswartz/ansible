@@ -39,6 +39,7 @@ Enter the following content:
   hosts: csr
   gather_facts: no
   connection: network_cli
+  become: yes
 
   tasks:
     - name: Ensure hostname is set

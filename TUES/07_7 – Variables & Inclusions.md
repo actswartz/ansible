@@ -63,13 +63,9 @@ Create `tasks_iosxe.yml`:
       - interface Loopback0
       - ip address {{ loopback_ip }} 255.255.255.0
       - description Configured using variables
+    parents: "interface Loopback0"
 
-- name: Configure MOTD banner
-  cisco.ios.ios_config:
-    lines:
-      - banner motd ^C
-      - {{ banner_message }}
-      - ^C
+ 
 ```
 
 **Explanation:**

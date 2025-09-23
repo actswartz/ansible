@@ -49,7 +49,9 @@ ansible_become_password: cisco
 
 
 ***type 'i' then paste***
+
 ***hit escape then type :wq and press enter:wq***
+
 **Explanation:**
 
 * The vault file is encrypted with AES256.

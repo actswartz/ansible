@@ -1,224 +1,98 @@
-# Lab 5 – Playbooks (IOS-XE)
+
+
+# Lab – IOS-XE Playbook
 
 ## Introduction
 
-Playbooks are like instruction manuals for your orchestration tasks. They tell Ansible what to do and in what order.
+In this lab, you will run an Ansible playbook against Cisco IOS-XE devices (CSR routers). The playbook configures basic settings, including hostname, Loopback interface, a MOTD banner, and verifies connectivity with a ping test. You will also complete a stretch task to configure NTP and Syslog for centralized management.
 
-They are written in **YAML** format, which relies heavily on spacing and indentation.
+## Objectives
 
-Refer to the **Lab Connection Information.docx** file for details on connecting to your Ansible host.
+* Apply Ansible playbooks to IOS-XE devices
+* Configure hostname and interfaces using `ios_config`
+* Set a Message of the Day (MOTD) banner
+* Verify connectivity using `ios_ping`
+* Stretch: Configure NTP and Syslog with Ansible
 
-> **Reminder:** Change the `XX` in your inventory file based on your Pod information.
+## Lab Steps
 
-```bash
-cd ~/ansible_labs/lab5-playbooks
-```
+### Step 1 – Verify Inventory
 
----
-
-## 1. Ansible Plays and Tasks
-
-### 1.1 Understanding Plays
-
-A “Play” is a mapping of a set of hosts to tasks. Each **task** calls an Ansible module (such as `ios_facts`) to perform a specific action.
-
-You can have multiple plays in a playbook to complete multiple stages of a job.
-
-We’ll start with a basic playbook example, run it, and discuss the output.
-
-When prompted for a password, use the **IOS-XE router password** provided on your lab sheet.
-
-We’ll specify `-u` for username and `-k` to be prompted for the password.
-
----
-
-### 1.2 Running a Playbook
-
-First, check which hosts the playbook will run against:
+Check that your `inventory.txt` file has devices listed under the `csr` group:
 
 ```bash
-ansible-playbook -i inventory ios_facts_play.yaml --list-hosts
+cat inventory.txt
 ```
 
-Now, run the playbook:
+### Step 2 – Review the Playbook
+
+Open `iosxe_lab.yml` and confirm the following tasks:
+
+* Set the hostname
+* Configure Loopback0 interface
+* Configure MOTD banner
+* Verify reachability to 8.8.8.8
+
+### Step 3 – Run the Playbook
+
+Execute the playbook against the `csr` group:
 
 ```bash
-ansible-playbook -i inventory ios_facts_play.yaml -u admin -k -e ansible_network_os=ios
+ansible-playbook -i inventory.txt iosxe_lab.yml
 ```
 
----
+### Step 4 – Observe the Output
 
-### 1.3 Example Output
+Review Ansible’s output as it applies configuration and runs the ping check.
+Look for changes made to the hostname, interface, and banner.
 
-You should see something like:
+### Step 5 – Validate the Configuration
 
-```
-playbook: ios_facts_play.yaml
-  play #1 (ios): Gather IOS Facts    TAGS: []
-    pattern: [u'ios']
-    hosts (1):
-      csr1000v-XX.localdomain
-```
+Log into a CSR router and verify:
 
-```
-PLAY [Gather IOS Facts] **********************************************************************
-
-TASK [Gathering Facts] ************************************************************************
-ok: [csr1000v-XX.localdomain]
-
-TASK [ios_facts] ******************************************************************************
-ok: [csr1000v-XX.localdomain]
-
-TASK [Get All Ip Addresses] *******************************************************************
-ok: [csr1000v-XX.localdomain] => {
-    "ansible_net_all_ipv4_addresses": [
-        "10.10.20.30",
-        "192.168.1.1",
-        "172.16.1.1"
-    ]
-}
-
-PLAY RECAP ************************************************************************************
-csr1000v-XX.localdomain : ok=3    changed=0    unreachable=0    failed=0
+```bash
+show run | include hostname
+show run interface Loopback0
+show run | include banner
+ping 8.8.8.8
 ```
 
----
+## Stretch Task – NTP and Syslog Configuration
 
-### 1.4 Playbook Example
+Extend the playbook by adding two new tasks:
+
+* Configure an NTP server (e.g., `192.168.56.200`)
+* Configure a Syslog server (e.g., `192.168.56.201`)
+
+### Example Tasks
 
 ```yaml
----
-- name: Gather IOS Facts
-  hosts: ios
-  connection: network_cli
-  gather_facts: yes
+    - name: Configure NTP server
+      ios_config:
+        lines:
+          - ntp server 192.168.56.200
 
-  tasks:
-    - name: Collect IOS Facts
-      cisco.ios.ios_facts:
-
-    - name: Get All IP Addresses
-      debug:
-        var: ansible_net_all_ipv4_addresses
+    - name: Configure Syslog server
+      ios_config:
+        lines:
+          - logging host 192.168.56.201
 ```
 
----
+### Validation
 
-## 2. Create Multi-Task Playbook
-
-**Use Case:** Generate a report of IOS device versions and models.
-
-### Instructions
-
-1. Working folder: `section2_multitask`
-2. Use the inventory file: `sectiontwo_inv`
-3. Create a playbook called **two\_task.yaml** with 2 tasks:
-
-   * Gather facts
-   * Debug the **model** and **version**
-4. Run with:
+On the CSR router, run:
 
 ```bash
-ansible-playbook -i sectiontwo_inv two_task.yaml -u admin -k -e ansible_network_os=ios
+show run | include ntp
+show run | include logging host
 ```
 
-5. Add the playbook to your Git repo, commit, and push.
+## Deliverables
 
----
+By the end of this lab you should have:
 
-## 3. Host & Group Vars
-
-Instead of putting variables in playbooks or CLI, best practice is to use **group\_vars** or **host\_vars**.
-
-Example structure:
-
-```
-lab5-playbooks/section5_snmp/group_vars/ios
-```
-
-File contents (`group_vars/ios`):
-
-```yaml
-ansible_connection: network_cli
-ansible_network_os: ios
-ansible_user: admin
-```
-
-This way you don’t need to pass `-u admin` or `-e ansible_network_os=ios` every time.
-
----
-
-## 4. Assert & Verifying Changes
-
-Use the **assert** module to verify changes.
-
-### Example Playbook: Change Description
-
-```yaml
----
-- name: Change Interface Description and Assert
-  hosts: ios
-  connection: network_cli
-  gather_facts: yes
-
-  tasks:
-    - name: Change GigabitEthernet1 Description
-      cisco.ios.ios_interface:
-        name: GigabitEthernet1
-        description: 'uplink to core'
-
-    - name: Gather facts again
-      cisco.ios.ios_facts:
-
-    - name: Debug Interface Description
-      debug:
-        var: ansible_net_interfaces['GigabitEthernet1']['description']
-
-    - name: Verify change was made
-      assert:
-        that:
-          - ansible_net_interfaces['GigabitEthernet1']['description'] == 'uplink to core'
-```
-
-Run:
-
-```bash
-ansible-playbook -i inventory assert_example.yaml -u admin -k
-```
-
-Expected output:
-
-```
-TASK [Verify change was made]
-ok: [csr1000v-XX.localdomain] => {
-    "changed": false,
-    "msg": "All assertions passed"
-}
-```
-
----
-
-## 5. Knowledge Check – Configure SNMP Community String
-
-**Use Case:** Configure a new SNMP community string on all IOS devices, then use assert to verify.
-
-1. Use `cisco.ios.ios_snmp_community` module → [docs](https://docs.ansible.com/ansible/latest/collections/cisco/ios/ios_snmp_community_module.html)
-2. Define variables in `group_vars/ios` (community string value).
-3. Create a playbook that references these variables.
-4. Run playbook and use `assert` to confirm the change.
-
----
-
-## Version Control Commit
-
-Add your new playbooks to version control:
-
-```bash
-git add lab5-playbooks/
-git commit -m "Add IOS-XE Playbooks lab"
-git push origin main
-```
-
----
-
-Would you like me to **rewrite all the example command outputs** (e.g., PLAY RECAP, TASK logs) so they consistently show **csr1000v-XX.localdomain** instead of `n9k-standalone-XX.localdomain`?
+* Hostnames configured on each CSR router
+* Loopback0 interface with assigned IP address
+* A MOTD banner displayed at login
+* NTP and Syslog configured (stretch task)
+* Successful ping verification in Ansible output

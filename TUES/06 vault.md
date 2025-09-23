@@ -1,220 +1,127 @@
-# Lab 6 – Vault (IOS-XE)
+
+
+# Lab – IOS-XE Playbook with Vault (Group `csr`)
 
 ## Introduction
 
-Ansible Vault allows us to keep sensitive and secret data like passwords, API keys, etc., in encrypted files rather than storing them in plaintext playbooks or elsewhere where someone could see them.
+In this lab, you will learn how to use **Ansible Vault** with a single inventory group called `csr`. You will securely store device credentials in an encrypted file and use them in a playbook that configures a banner on IOS-XE devices.
 
-In this lab we will explore Vault and its use cases, focusing on **Cisco IOS-XE devices**.
+## Objectives
 
-Refer to the **Ansible-Pod-Info.docx** file for information on connecting to your Ansible host.
+* Create a vault file for the `csr` group
+* Encrypt credentials with Ansible Vault
+* Reference vault automatically through `group_vars`
+* Run the playbook and confirm results
 
-> **Reminder:** Change the `XX` in your inventory file based on your Pod information.
+## Lab Steps
 
-```bash
-cd ~/ansible_labs/lab6-vault
-```
+### Step 1 – Create Group Vars Directory
 
----
-
-## 1. Encrypting Existing Files
-
-We’ll start by creating a file with login information for an IOS-XE router, then encrypt it with Vault.
+Create a `group_vars` directory for the `csr` group:
 
 ```bash
-echo 'router_user: admin' >> ssh_pass.txt
-echo 'router_pw: password' >> ssh_pass.txt
+mkdir -p group_vars/csr
 ```
 
-Check the file:
+### Step 2 – Create Vault File
+
+Create and encrypt a vault file for the group:
 
 ```bash
-cat ssh_pass.txt
+ansible-vault create group_vars/csr/vault.yml
 ```
 
-Encrypt it:
-
-```bash
-ansible-vault encrypt ssh_pass.txt
-```
-
-Enter `ansible` (or another password you’ll remember).
-
----
-
-## 2. Viewing Encrypted Files
-
-Use `ansible-vault view` to look inside:
-
-```bash
-ansible-vault view ssh_pass.txt
-```
-
-It will prompt for the vault password and then show:
+Inside, add:
 
 ```yaml
-router_user: admin
-router_pw: password
+ansible_user: cisco
+ansible_password: cisco
 ```
 
----
+Save and exit. This file will be encrypted.
 
-## 3. Creating/Editing Encrypted Files
+### Step 3 – Create the Playbook
 
-Instead of creating a plaintext file and encrypting later, we can directly create vault files.
-
-```bash
-ansible-vault create group_vars/ios/vault
-```
-
-Enter `ansible` as the vault password. Add the following lines:
+Create a playbook named `iosxe_vault_group.yml`:
 
 ```yaml
-router_user: username_here
-router_pw: password_here
-```
-
-Save with `:wq!`.
-
-To edit later:
-
-```bash
-ansible-vault edit group_vars/ios/vault
-```
-
 ---
+- name: IOS-XE Group Vault Playbook
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
 
-## 4. Using the Vault in Playbooks
-
-Here’s an example group\_vars file:
-
-```yaml
-# group_vars/ios/vars.yml
-ansible_connection: network_cli
-ansible_network_os: ios
-ansible_user: "{{ router_user }}"
-ansible_password: "{{ router_pw }}"
-```
-
-Now test with a simple facts playbook:
-
-```bash
-ansible-playbook -i inventory ios_facts_play.yaml --ask-vault-pass
-```
-
----
-
-## 5. Decrypting Files
-
-To permanently decrypt:
-
-```bash
-ansible-vault decrypt ssh_pass.txt
-```
-
----
-
-## 6. Rekey (Change Vault Password)
-
-Re-encrypt if needed, then run:
-
-```bash
-ansible-vault rekey ssh_pass.txt
-```
-
----
-
-## 7. Vault Password File
-
-Instead of typing the password every time:
-
-```bash
-echo 'ansible' > .vault_pass
-ansible-playbook -i inventory ios_facts_play.yaml --vault-password-file=.vault_pass
-```
-
----
-
-## 8. Environment Variable
-
-Set an environment variable:
-
-```bash
-export ANSIBLE_VAULT_PASSWORD_FILE=./.vault_pass
-ansible-playbook -i inventory ios_facts_play.yaml
-```
-
----
-
-## 9. Knowledge Check 1
-
-**Use Case:** Store SSH username/password in Vault for IOS-XE router and configure a playbook to set the MOTD.
-
-1. Working directory: `section9_knowledgecheck`
-2. Create vault with router login info.
-3. Create playbook to set an MOTD on the IOS device.
-4. Group is `ios` in the inventory file.
-5. MOTD can be any text.
-6. Use group\_vars + vault so that running is as simple as:
-
-```bash
-ansible-playbook ios ios_motd.yaml
-```
-
-Helpful Links:
-
-* [Ansible IOS Guide](https://docs.ansible.com/ansible/latest/network/user_guide/platform_ios.html)
-* [ios\_banner module](https://docs.ansible.com/ansible/latest/collections/cisco/ios/ios_banner_module.html)
-
----
-
-## 10. Securing Sensitive Data (MOTD in Vault)
-
-Move MOTD text into Vault:
-
-```bash
-ansible-vault edit group_vars/ios/vault
-```
-
-Add:
-
-```yaml
-router_user: admin
-router_pw: password
-motd_message: This is my secure MOTD message, stored in Vault.
-```
-
-Copy your playbook:
-
-```bash
-cp ios_motd.yaml secure_change_motd.yaml
-```
-
-Edit it:
-
-```yaml
-- name: Configure MOTD securely
-  hosts: ios
   tasks:
-    - name: Configure banner MOTD
-      cisco.ios.ios_banner:
-        banner: motd
-        text: "{{ motd_message }}"
+    - name: Configure MOTD banner
+      ios_config:
+        lines:
+          - banner motd ^C
+          - Welcome to CSR router - Secured with Vault
+          - ^C
+
+    - name: Verify device version
+      ios_command:
+        commands:
+          - show version
+      register: version_output
+
+    - name: Display version info
+      debug:
+        var: version_output.stdout_lines
 ```
 
-Run:
+Note: You do **not** need `vars_files:` here — Ansible will load `group_vars/csr/vault.yml` automatically.
+
+### Step 4 – Run the Playbook
+
+Run the playbook, providing the vault password:
 
 ```bash
-ansible-playbook -i inventory secure_change_motd.yaml
+ansible-playbook iosxe_vault_group.yml --ask-vault-pass
+```
+
+### Step 5 – Validate
+
+Log into a CSR router and check:
+
+```bash
+show run | include banner
+```
+
+You should see the MOTD banner applied.
+
+---
+
+## Stretch Task – Use `--vault-id` with Password File
+
+1. Save the password `cisco` in a local file:
+
+```bash
+echo 'cisco' > .vault_pass.txt
+chmod 600 .vault_pass.txt
+```
+
+2. Rekey the vault to use this file:
+
+```bash
+ansible-vault rekey group_vars/csr/vault.yml --vault-password-file .vault_pass.txt
+```
+
+3. Re-run your playbook using non-interactive vault authentication:
+
+```bash
+ansible-playbook iosxe_vault_group.yml --vault-id .vault_pass.txt
 ```
 
 ---
 
-## 11. Knowledge Check 2
+## Deliverables
 
-**Use Case:** Secure a playbook with sensitive data so it can be version-controlled.
+By the end of this lab you should have:
 
-1. Working directory: `section11_knowledgecheck`
-2. Copy over your section9 setup (`cp -r ../section9_knowledgecheck .`).
-3. Ensure all sensitive info (user/pass/MOTD) is in Vault.
-4. Verify playbook runs successfully.
-5. Push to GitHub repo, but **don’t add Vault file to version control**.
+* Encrypted credentials stored in `group_vars/csr/vault.yml`
+* A playbook that configures a MOTD banner using Vault
+* Verified device information displayed in the output
+* Experience with both interactive (`--ask-vault-pass`) and automated (`--vault-id`) vault use
+
+\

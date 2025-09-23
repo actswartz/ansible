@@ -1,4 +1,5 @@
 
+---
 
 # Lab – Introduction to IOS-XE Playbooks
 
@@ -139,4 +140,3 @@ By the end of this lab you should have:
 * Extended the playbook with an NTP configuration (stretch task)
 
 ---
-

@@ -65,9 +65,9 @@ Create a file named `playbook_lab.yml`:
     - name: Configure login banner
       cisco.ios.ios_config:
         lines:
-          - banner login ^C
+          - banner login $
           - Authorized Access Only - Managed by Ansible
-          - ^C
+          - $
 
     # Task 4: Verify device reachability
     - name: Run ping test

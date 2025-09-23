@@ -152,7 +152,7 @@ Enter the vault password (`cisco`) when prompted.
 
 ---
 
-### Step 6 – Validate on the Device
+### Step 6 – Validate on the Device (optional)
 
 SSH into the router and run:
 

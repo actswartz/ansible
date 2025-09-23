@@ -4,9 +4,14 @@
 
 ## Introduction
 
-Storing credentials directly in playbooks or inventory files is insecure. If someone gains access to those files, they immediately see usernames and passwords in clear text. **Ansible Vault** solves this by encrypting sensitive data (like device credentials) while still allowing Ansible to use it during playbook execution.
+Storing credentials directly in playbooks or inventory files is insecure. If someone gains access to those files, they immediately see usernames and passwords in clear text. **Ansible Vault** solves this problem by encrypting sensitive data (like device credentials) while still allowing Ansible to use it during playbook execution.
 
-In this lab, you will use Ansible Vault to protect IOS-XE device credentials. You will create an encrypted vault file, reference it in a playbook, and confirm the playbook runs securely without exposing clear text passwords.
+In this lab, you will:
+
+* Create a vault file containing IOS-XE device credentials
+* Encrypt the file using Ansible Vault
+* Reference that vault file in a playbook
+* Run the playbook securely, without exposing clear text credentials
 
 ---
 
@@ -30,22 +35,23 @@ Run the following command to create and encrypt a new vault file:
 ansible-vault create vault.yml
 ```
 
-Enter a password when prompted (for this lab, use `cisco`).
+When prompted, enter a password (for this lab, use **`cisco`**).
 
 Inside the file, add:
 
 ```yaml
 ansible_user: cisco
 ansible_password: cisco
+ansible_become: yes
+ansible_become_method: enable
+ansible_become_password: cisco
 ```
-
-Save and exit.
 
 **Explanation:**
 
-* The file is encrypted with AES256.
-* Even though credentials are inside, nobody can read them without the vault password.
-* Using the same vault password (`cisco`) across your lab keeps it simple, but in production you would use a stronger secret.
+* The vault file is encrypted with AES256.
+* Credentials are unreadable without the vault password.
+* Adding `ansible_become` ensures Ansible can enter *enable mode* for configuration commands.
 
 ---
 
@@ -57,23 +63,27 @@ Check that the vault file is encrypted:
 cat vault.yml
 ```
 
-You should see scrambled text starting with `$ANSIBLE_VAULT;1.1;AES256`.
+You should see scrambled text beginning with:
+
+```
+$ANSIBLE_VAULT;1.1;AES256
+```
 
 **Explanation:**
-This proves that your sensitive information is no longer in plain text. Only Ansible with the correct password can decrypt it at runtime.
+This proves your credentials are no longer in clear text. Only Ansible with the correct vault password can decrypt them.
 
 ---
 
 ### Step 3 – Edit Vault File (Optional)
 
-If you need to make changes:
+If you need to update the file later:
 
 ```bash
 ansible-vault edit vault.yml
 ```
 
 **Explanation:**
-This automatically decrypts the file in a temporary session, lets you edit, and re-encrypts it when you save.
+This decrypts the file temporarily, lets you edit it, and then re-encrypts it automatically when you save.
 
 ---
 
@@ -92,18 +102,30 @@ Create a file named `iosxe_vault_lab.yml`:
 
   tasks:
     - name: Configure MOTD banner
-      ios_config:
+      cisco.ios.ios_config:
         lines:
           - banner motd ^C
           - This device is managed securely with Ansible Vault
           - ^C
+
+    - name: Verify banner
+      cisco.ios.ios_command:
+        commands:
+          - show run | include banner
+      register: banner_output
+
+    - name: Display banner verification
+      debug:
+        msg: |
+          === BANNER CONFIGURATION ===
+          {{ banner_output.stdout[0] }}
 ```
 
 **Explanation:**
 
-* `vars_files:` points to the encrypted `vault.yml`.
-* At runtime, Ansible will prompt for the vault password, decrypt the file in memory, and use the credentials.
-* The credentials never appear in logs or the playbook itself.
+* `vars_files:` tells Ansible to load credentials from the encrypted `vault.yml`.
+* At runtime, Ansible decrypts the file in memory. Credentials never appear in clear text.
+* The playbook both **configures** (banner) and **verifies** (show command).
 
 ---
 
@@ -115,18 +137,18 @@ Run with:
 ansible-playbook iosxe_vault_lab.yml --ask-vault-pass
 ```
 
-When prompted, enter the vault password (`cisco`).
+Enter the vault password (`cisco`) when prompted.
 
 **Explanation:**
 
 * `--ask-vault-pass` tells Ansible to decrypt `vault.yml` at runtime.
-* The playbook executes just like normal, but credentials are loaded securely.
+* You’ll see configuration tasks run successfully without exposing credentials.
 
 ---
 
-### Step 6 – Validate Configuration
+### Step 6 – Validate on the Device
 
-On the router:
+SSH into the router and run:
 
 ```bash
 show run | include banner
@@ -135,22 +157,22 @@ show run | include banner
 You should see the banner configured by Ansible.
 
 **Explanation:**
-This confirms that credentials stored in the encrypted vault worked, even though they were never exposed.
+This confirms the encrypted credentials worked and Ansible successfully applied the config.
 
 ---
 
 ## Stretch Task – Vault Rekey (Password Rotation)
 
-Rotate the vault password without retyping the file contents:
+Change the vault password without retyping its contents:
 
 ```bash
 ansible-vault rekey vault.yml
 ```
 
-You’ll be prompted for the **old password** (`cisco`), then a **new password**.
+You’ll be prompted for the **old password** (`cisco`) and then a **new password**.
 
 **Explanation:**
-Rekeying is like rotating your secrets. In production, teams might change vault passwords regularly to reduce risk.
+Rekeying = rotating secrets. In production, teams regularly rotate vault passwords to reduce security risk.
 
 ---
 
@@ -161,7 +183,6 @@ By the end of this lab you should have:
 * A secure `vault.yml` with encrypted credentials
 * A playbook that runs successfully using `--ask-vault-pass`
 * A MOTD banner applied to IOS-XE devices
-* Experience verifying that no credentials are stored or displayed in clear text
-* An understanding of password rotation via `ansible-vault rekey`
+* Verified the banner through Ansible output and directly on the device
+* Experience with password rotation (`ansible-vault rekey`)
 
----

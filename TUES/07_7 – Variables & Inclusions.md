@@ -1,220 +1,153 @@
-# Lab 7 – Variables & Inclusions (IOS-XE)
+
+
+# Lab – IOS-XE Playbook with Variables & Inclusions
 
 ## Introduction
 
-In this lab you will learn how to use variables to create interface descriptions, set MTU values, and ensure ports are enabled on a Cisco IOS-XE device.
+In this lab, you will learn how to use **variables** and **inclusions** in Ansible to make your playbooks more **reusable, modular, and easier to maintain**. Instead of writing all configuration details directly inside a single playbook, you will separate the variables (like hostnames and IPs) into a variable file, and the tasks (like configuration commands) into a task file. Then, your main playbook will simply *include* these files.
 
-Refer to the **Ansible-Pod-Info.docx** file for information on connecting to your Ansible host.
+This separation is important in real-world environments because:
 
-> **Reminder:** Change the `XX` in your inventory file based on your Pod information.
-
-```bash
-cd ~/ansible_labs/lab7-variables-inclusions
-```
+* **Variables** allow you to adjust configurations per device, per group, or per environment without editing the main playbook.
+* **Inclusions** allow you to reuse the same task logic across multiple playbooks (e.g., “configure interfaces” or “set banners”).
 
 ---
 
-## 1. Managing Variables
+## Objectives
 
-### 1.1 Understanding Variables
-
-Ansible variables can be used to store values and reuse them throughout playbooks, group\_vars, and host\_vars. This makes configuration easier to maintain.
-
-In this lab, variables will define interface descriptions and MTU values.
-
-Variable scopes:
-
-1. **Global Scope** – Set from CLI or ansible.cfg
-2. **Play Scope** – Defined inside playbooks
-3. **Host Scope** – Defined in inventory or gathered as facts
-
-We will focus on **group\_vars** for this lab.
+* Define IOS-XE variables in an external file
+* Use `vars_files` to load variable definitions
+* Split configuration into a separate task file
+* Use `include_tasks` to keep the main playbook clean and modular
+* Validate that IOS-XE devices are configured with the variables
 
 ---
 
-### 1.2 Setting Up Group Vars
+## Lab Steps
 
-1. Make the folder structure:
+### Step 1 – Create a Variables File
 
-   ```bash
-   mkdir -p group_vars/ios
-   ```
-2. Create an **inventory** file with your IOS device in group `ios`.
-3. Create an **ansible.cfg** file pointing to the inventory and disabling host key checking.
-4. Create a **group\_vars/ios/ios.yaml** file.
-5. Add the following variables:
+Create `vars_iosxe.yml`:
 
 ```yaml
-ansible_connection: network_cli
-ansible_network_os: ios
-ansible_user: "{{ router_user }}"
-ansible_password: "{{ router_pw }}"
-
-int_desc: "Core uplink Jumbo MTU"
-int_mtu: 9216
-interface: GigabitEthernet1
+hostname: CSR-DEMO
+loopback_ip: 10.10.10.1
+banner_message: "Welcome to CSR Demo Router - Managed by Ansible"
 ```
 
-6. Use Ansible Vault to store the values of `router_user` and `router_pw`.
+Explanation: This file stores all of your device-specific values. Instead of hardcoding these into the playbook, you can change them here and rerun the same playbook.
 
 ---
 
-### 1.3 Creating a Playbook
+### Step 2 – Create a Task File
 
-Create a playbook named **int\_mtu\_example.yaml**:
+Create `tasks_iosxe.yml`:
 
 ```yaml
-- name: Variable Example
-  hosts: ios
+---
+- name: Set hostname
+  ios_config:
+    lines:
+      - hostname {{ hostname }}
+
+- name: Configure Loopback0
+  ios_config:
+    lines:
+      - interface Loopback0
+      - ip address {{ loopback_ip }} 255.255.255.0
+      - description Configured using variables
+
+- name: Configure MOTD banner
+  ios_config:
+    lines:
+      - banner motd ^C
+      - {{ banner_message }}
+      - ^C
+```
+
+Explanation: These tasks use Jinja2 templating (`{{ variable }}`) to insert values from `vars_iosxe.yml`. This means the same tasks can be reused for different hosts or groups by simply changing variable files.
+
+---
+
+### Step 3 – Create the Main Playbook
+
+Create `iosxe_vars_inclusions_lab.yml`:
+
+```yaml
+---
+- name: IOS-XE Variables and Inclusions Lab
+  hosts: csr
   gather_facts: no
+  connection: network_cli
+  vars_files:
+    - vars_iosxe.yml
+
   tasks:
-    - name: Change Interface Desc and MTU
-      cisco.ios.ios_interface:
-        name: "{{ interface }}"
-        description: "{{ int_desc }}"
-        mtu: "{{ int_mtu }}"
-        enabled: true
+    - name: Include IOS-XE tasks
+      include_tasks: tasks_iosxe.yml
 ```
 
-Run the playbook:
-
-```bash
-ansible-playbook int_mtu_example.yaml --ask-vault-pass
-```
+Explanation: Notice how clean the main playbook is now — it doesn’t contain the details of configs. It just points to the variables file and includes the task list.
 
 ---
 
-### 1.4 Refactoring with Debug and Assertions
+### Step 4 – Run the Playbook
 
-Enhance the playbook with validation:
+Run your playbook:
+
+```bash
+ansible-playbook iosxe_vars_inclusions_lab.yml
+```
+
+Observe that Ansible loads the variables, executes the included tasks, and applies the configurations to your IOS-XE routers.
+
+---
+
+### Step 5 – Validate on the Device
+
+Log into a CSR router and confirm:
+
+```bash
+show run | include hostname
+show run interface Loopback0
+show run | include banner
+```
+
+You should see the hostname, loopback, and banner as defined in your variable file.
+
+---
+
+## Stretch Task – Override Variables
+
+1. Create a group variable file for `csr`:
+
+```bash
+mkdir -p group_vars/csr
+nano group_vars/csr/main.yml
+```
+
+2. Add new values:
 
 ```yaml
-- name: Variable Example with Validation
-  hosts: ios
-  gather_facts: yes
-  tasks:
-    - name: Change Interface Desc and MTU
-      cisco.ios.ios_interface:
-        name: "{{ interface }}"
-        description: "{{ int_desc }}"
-        mtu: "{{ int_mtu }}"
-        enabled: true
-
-    - name: Debug MTU Value
-      debug:
-        var: ansible_net_interfaces[interface].mtu
-
-    - name: Verify MTU
-      assert:
-        that:
-          - ansible_net_interfaces[interface].mtu == int_mtu
-
-    - name: Debug Description
-      debug:
-        var: ansible_net_interfaces[interface].description
-
-    - name: Verify Description
-      assert:
-        that:
-          - ansible_net_interfaces[interface].description == int_desc
+hostname: CSR-GROUP
+loopback_ip: 10.20.20.1
+banner_message: "Group Vars Override - CSR Router"
 ```
+
+3. Re-run your playbook. The group variables will override the ones in `vars_iosxe.yml`.
+
+Explanation: This demonstrates how **variable precedence** works in Ansible — group variables can take priority over defaults or manually included files.
 
 ---
 
-## 2. Managing Inclusions
+## Deliverables
 
-### 2.1 Setup
+By the end of this lab you should have:
 
-Create an **inclusions** folder and copy configs:
-
-```bash
-mkdir inclusions && cd inclusions
-cp -R ../group_vars .
-cp ../ansible.cfg .
-cp ../inventory .
-```
+* A variables file (`vars_iosxe.yml`)
+* A task file (`tasks_iosxe.yml`)
+* A clean, modular playbook (`iosxe_vars_inclusions_lab.yml`)
+* Configurations applied to IOS-XE routers using variables
+* An understanding of variable overrides with `group_vars`
 
 ---
-
-### 2.2 Creating Task and Variable Files
-
-1. **Tasks file**
-
-   ```bash
-   mkdir tasks && cd tasks
-   ```
-
-   Create **change\_vlan.yml**:
-
-```yaml
-- name: Adding Vlan "{{ vlan_number }}"
-  cisco.ios.ios_vlan:
-    vlan_id: "{{ vlan_number }}"
-```
-
-2. **Variables file**
-
-   ```bash
-   cd ..
-   mkdir vars && cd vars
-   ```
-
-   Create **variables.yml**:
-
-```yaml
-vlan_number: 120
-```
-
----
-
-### 2.3 Main Playbook
-
-Create **playbook.yml** in project root:
-
-```yaml
-- name: Setup Vlan
-  hosts: ios
-  gather_facts: no
-  tasks:
-    - name: Include the variables from the YAML file
-      include_vars: vars/variables.yml
-
-    - name: Include the change_vlan file and set the variables
-      include: tasks/change_vlan.yml
-```
-
-Check syntax:
-
-```bash
-ansible-playbook --syntax-check playbook.yml --ask-vault-pass
-```
-
-Run:
-
-```bash
-ansible-playbook playbook.yml --ask-vault-pass
-```
-
----
-
-### 2.4 Verify on IOS Device
-
-SSH into the router and check:
-
-```bash
-show vlan brief
-```
-
-You should see VLAN 120 in the output.
-
----
-
-## Version Control Commit
-
-After testing, add and push your files to GitHub. Do not commit vault files.
-
-```bash
-git add lab7-variables-inclusions/
-git commit -m "Add Lab 7 Variables and Inclusions for IOS-XE"
-git push origin main
-```

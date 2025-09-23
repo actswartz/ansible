@@ -101,13 +101,14 @@ Create a file named `iosxe_vault_lab.yml`:
     - vault.yml
 
   tasks:
-    - name: Configure MOTD banner
-      cisco.ios.ios_config:
-        lines:
-          - banner motd ^C
-          - This device is managed securely with Ansible Vault
-          - ^C
-
+    - name: Configure the MOTD banner
+      cisco.ios.ios_banner:
+        banner: motd
+        text: |
+          ######################################################
+          # Unauthorized access to this device is prohibited.  #
+          # All activity is logged and monitored.              #
+          ######################################################
     - name: Verify banner
       cisco.ios.ios_command:
         commands:

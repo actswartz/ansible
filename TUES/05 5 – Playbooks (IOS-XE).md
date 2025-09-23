@@ -61,14 +61,14 @@ Create a file named `playbook_lab.yml`:
           - description Configured by Ansible Lab
         parents: "interface Loopback0"
 
-    # Task 3: Configure Login Banner
-    - name: Configure login banner
-      cisco.ios.ios_config:
-        lines:
-          - banner login $
-          - Authorized Access Only - Managed by Ansible
-          - $
-
+    - name: Configure the MOTD banner
+      cisco.ios.ios_banner:
+        banner: motd
+        text: |
+          ######################################################
+          # Unauthorized access to this device is prohibited.  #
+          # All activity is logged and monitored.              #
+          ######################################################
     # Task 4: Verify device reachability
     - name: Run ping test
       cisco.ios.ios_command:

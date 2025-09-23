@@ -1,5 +1,4 @@
 
----
 
 # Lab – Introduction to IOS-XE Playbooks
 
@@ -54,14 +53,13 @@ Create a file named `playbook_lab.yml`:
         lines:
           - hostname {{ inventory_hostname }}
 
-    # Task 2: Configure Loopback0
+    # Task 2: Configure Loopback0 interface
     - name: Configure Loopback0 interface
       cisco.ios.ios_config:
         lines:
-          - interface Loopback0
-          - ip address 192.168.{{ inventory_hostname[-1] }}.1 255.255.255.0
-          - description Configured by Playbook Lab
-        match: line
+          - ip address 192.168.2.1 255.255.255.0
+          - description Configured by Ansible Lab
+        parents: "interface Loopback0"
 
     # Task 3: Configure Login Banner
     - name: Configure login banner
@@ -122,7 +120,7 @@ Extend your playbook to configure an NTP server:
           - ntp server 192.168.56.200
 ```
 
-Run the playbook again, then verify with:
+Re-run the playbook, then verify on the router:
 
 ```bash
 show run | include ntp
@@ -138,5 +136,3 @@ By the end of this lab you should have:
 * Configured hostname, loopback, and banner using Ansible
 * Verified connectivity with a ping test
 * Extended the playbook with an NTP configuration (stretch task)
-
----

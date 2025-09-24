@@ -101,9 +101,9 @@ nano loopback_interfaces.yml
           - description {{ item.desc }}
         parents: "interface {{ item.name }}"
       loop:
-        - { name: Loopback10, ip: 10.10.10.1, mask: 255.255.255.0, desc: "Configured by Ansible - Loopback10" }
-        - { name: Loopback20, ip: 10.20.20.1, mask: 255.255.255.0, desc: "Configured by Ansible - Loopback20" }
-        - { name: Loopback30, ip: 10.30.30.1, mask: 255.255.255.0, desc: "Configured by Ansible - Loopback30" }
+        - { name: Loopback10, ip: 10.11.10.1, mask: 255.255.255.0, desc: "Configured by Ansible - Loopback10" }
+        - { name: Loopback20, ip: 10.21.20.1, mask: 255.255.255.0, desc: "Configured by Ansible - Loopback20" }
+        - { name: Loopback30, ip: 10.31.30.1, mask: 255.255.255.0, desc: "Configured by Ansible - Loopback30" }
 ```
 
 **Run the playbook:**

@@ -1,0 +1,60 @@
+---
+- name: SDWAN Lab1 — Device Discovery via Catalyst WAN
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - cisco.catalystwan
+
+  vars:
+    # Manager / vManage or controller info
+    manager:
+      url: "{{ vmanage_url }}"
+      username: "{{ vmanage_username }}"
+      password: "{{ vmanage_password }}"
+      verify: false
+
+    discovery_name: "lab1-device-discovery"
+    target_ips:                 # list of IPs or ranges to discover
+      - "10.0.0.0/24"
+      - "192.168.1.0/24"
+    protocol_order: "ssh,telnet"
+    retry: 3
+    timeout: 30
+
+  tasks:
+    - name: Start device discovery
+      cisco.catalystwan.device_discovery:
+        manager_authentication: "{{ manager }}"
+        name: "{{ discovery_name }}"
+        ip_address_list: "{{ target_ips }}"
+        protocol_order: "{{ protocol_order }}"
+        retry: "{{ retry }}"
+        timeout: "{{ timeout }}"
+        state: present
+      register: discovery_job
+
+    - name: Wait for discovery to complete
+      cisco.catalystwan.device_discovery_info:
+        manager_authentication: "{{ manager }}"
+        name: "{{ discovery_name }}"
+      register: discovery_status
+      until: discovery_status.status in ["completed","failed"]
+      retries: 10
+      delay: 10
+
+    - name: Fetch discovered devices
+      cisco.catalystwan.devices_info:
+        manager_authentication: "{{ manager }}"
+        device_category: edges   # or vedges, controllers, etc.
+      register: discovered_devices
+
+    - name: Debug discovered devices
+      debug:
+        msg: "{{ discovered_devices.devices }}"
+
+    - name: Optionally delete the discovery job
+      cisco.catalystwan.device_discovery:
+        manager_authentication: "{{ manager }}"
+        name: "{{ discovery_name }}"
+        state: absent
+      when: discovery_status.status == "completed"

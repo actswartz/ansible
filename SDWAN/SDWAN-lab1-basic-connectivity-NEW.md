@@ -1,53 +1,52 @@
 # Lab 1 – Basic Connectivity Check (NEW, Enhanced)
 
-## 📘 Introduction
-In this first lab, you’ll begin working with **Ansible and Cisco Catalyst SD-WAN (vManage)**. Before diving into advanced automation, it’s essential to prove that Ansible can successfully talk to vManage. This lab focuses on establishing that baseline connectivity by logging in, checking vManage’s status, and retrieving a list of devices.
+## 📘 Introduction  
+In this first lab, you’ll begin working with **Ansible and Cisco Catalyst SD-WAN (vManage)**. Before diving into advanced automation, it’s essential to prove that Ansible can successfully talk to vManage. This lab focuses on establishing that baseline connectivity by logging in, checking vManage’s status, and retrieving a list of devices.  
+
+We will connect to a Cisco DevNet sandbox vManage instance:  
+
+- 🌐 **Server:** `sandbox-sdwan-2.cisco.com`  
+- 👤 **Username:** `admin`  
+- 🔑 **Password:** `Cisco12345`  
+
+⚠️ *Important note:* In production, you would **never** store credentials in plain text. You’d use Ansible Vault or an environment variable. For this training sandbox, plain text is acceptable.  
 
 ---
 
-## 📂 Inventory Setup
-## 🔎 Understanding the Inventory File
+## 📂 Inventory Setup  
 
-The file `SDWAN-inventory.txt` is an **Ansible inventory**. Inventories tell Ansible *which hosts to run tasks on*.
+The lab uses an **Ansible inventory file** named `SDWAN-inventory.txt` to tell Ansible where to run tasks.  
 
-In our labs, the inventory contains:
+Example (`SDWAN-inventory.txt`):  
 ```
 [local]
 localhost ansible_connection=local
-```
+```  
 
-- `[local]` is a group name — here we only have one group called "local".  
-- `localhost` means the playbook will run on your local control machine, not on a remote server.  
-- `ansible_connection=local` tells Ansible to run modules directly on the local machine instead of trying SSH.
+### 🔎 Understanding the Inventory File  
+- `[local]` is a group name with one host inside it.  
+- `localhost` means the playbook runs on your control machine.  
+- `ansible_connection=local` tells Ansible not to use SSH, but to execute modules locally.  
 
-👉 Even though the playbooks target `localhost`, the actual API calls go from your Ansible control machine to **vManage** over HTTPS using the modules in the `cisco.catalystwan` collection.
-
-
-In this lab, instead of only using `vars.yml`, you will also rely on an **Ansible inventory file** named `SDWAN-inventory.txt`.
-This file is provided to you and already contains the host definition for `localhost` (your control machine).
-
-Example (`SDWAN-inventory.txt`):
-```
-[local]
-localhost ansible_connection=local
-```
-You will still use `vars.yml` for your vManage URL, username, and password, but the playbooks will now be run with the inventory file specified.
+👉 Even though the playbooks target `localhost`, the actual API calls go from your control machine to **vManage** over HTTPS.  
 
 ---
 
-## Step 1 – Set Up Variables
-You’ll create a file called `vars.yml` to hold your vManage URL, username, and password. Keeping credentials separate from the playbook is best practice and makes your playbook reusable.
+## Step 1 – Set Up Variables  
+
+Create a file called **`vars.yml`** to hold your vManage connection details:  
 
 ```yaml
-vmanage_url: "https://<vmanage-ip-or-host>"
+vmanage_url: "https://sandbox-sdwan-2.cisco.com"
 vmanage_username: "admin"
-vmanage_password: "your_password"
+vmanage_password: "Cisco12345"
 ```
 
 ---
 
-## Step 2 – Create the Playbook
-This playbook checks vManage’s health and lists vEdge devices.
+## Step 2 – Create the Playbook  
+
+Save this as **`SDWAN-lab1-basic-connectivity.yml`**:  
 
 ```yaml
 ---
@@ -90,25 +89,69 @@ This playbook checks vManage’s health and lists vEdge devices.
 ```
 
 🔎 **Explanation:**  
-- `manager_info` checks if vManage is alive.  
-- `devices_info` pulls device inventory.  
-- `debug` prints raw data to help you see what’s happening.
+- The `manager_info` task checks if vManage is alive.  
+- The `devices_info` task lists vEdge routers from vManage’s inventory.  
+- `debug` prints the raw response so you can see the details.  
 
 ---
 
-## Step 3 – Run the Lab
+## 📊 Visual Overview  
+
+```mermaid
+sequenceDiagram
+    participant A as Student (Ansible)
+    participant M as vManage (sandbox-sdwan-2.cisco.com)
+    participant D as SD-WAN Devices
+
+    A->>M: manager_info request (login + status)
+    M-->>A: returns version, uptime, status
+
+    A->>M: devices_info request
+    M-->>A: list of vEdges
+    A->>D: (indirect) device reachability verified via vManage
+```
+
+---
+
+## Step 3 – Run the Lab  
+
+Run the playbook using the provided inventory:  
+
 ```bash
 ansible-playbook -i SDWAN-inventory.txt SDWAN-lab1-basic-connectivity.yml
 ```
 
 ---
 
-## 📊 Expected Output
-- **Manager Info:** Status should be “active” with version and uptime.  
-- **Devices:** vEdges listed with system IPs and reachability.  
-- If no devices, check your setup.
+## 📊 Expected Output  
+
+1. **Manager Info**  
+   - You should see fields like:  
+     ```
+     "status": "active"
+     "version": "20.10"
+     "uptime": "123456"
+     ```  
+
+2. **Devices**  
+   - You’ll see a list of vEdge devices with details like:  
+     ```
+     "deviceId": "123abc"
+     "host-name": "vedge1"
+     "system-ip": "10.0.0.1"
+     "reachability": "reachable"
+     ```  
+
+3. **Validation**  
+   - If devices are listed → ✅ Lab succeeded.  
+   - If empty → ❌ Check your credentials, URL, or whether devices are registered in the sandbox.  
 
 ---
 
-## 🎓 Summary
-You validated connectivity between Ansible and vManage. This proves the foundation works: your automation environment can query SD-WAN Manager APIs. Later labs will build on this to analyze health, policies, and compliance.
+## 🎓 Summary  
+In this lab, you:  
+- Connected Ansible to the sandbox vManage server.  
+- Verified the vManage API was alive.  
+- Pulled back a list of vEdge devices.  
+
+This establishes a solid foundation for automation. From now on, every lab will build on this connectivity to perform deeper analysis, health checks, and compliance reporting.  

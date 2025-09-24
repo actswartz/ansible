@@ -1,4 +1,4 @@
-# SDWAN Lab 1: Basic Catalyst WAN Connectivity and Device Discovery
+    # SDWAN Lab 1: Basic Catalyst WAN Connectivity and Device Discovery
 
 ## Objective
 Connect to Cisco Catalyst WAN vManage controller via REST API and discover all Catalyst WAN devices in the fabric using Ansible automation.

@@ -1,10 +1,11 @@
-# Lab – IOS-XE Playbooks with Conditionals (Progression Pack)
+
+# Lab – IOS-XE Playbooks with Conditionals 
 
 ## Introduction
 
 In Ansible, conditionals let you run a task **only if certain conditions are met**. Without them, playbooks apply tasks to every host, regardless of context. That can lead to wasted effort (running unnecessary checks) or even broken configs (applying settings where they don’t belong).
 
-**Conditionals make playbooks context-aware.**
+Conditionals make playbooks **context-aware**.
 They act like *if statements* in programming:
 
 * *If the device is a CSR, set the hostname.*
@@ -26,11 +27,29 @@ By the end of this lab sequence, you’ll see how conditionals transform playboo
 
 ---
 
+## Step 0 – Install the Cisco IOS Collection
+
+On your Ansible control node, install the Cisco IOS collection. Without this, `ios_config`, `ios_banner`, and `ios_command` will not work:
+
+```bash
+ansible-galaxy collection install cisco.ios
+```
+
+---
+
 ## Lab 1 – Very Simple Conditional
 
 ### Goal
 
 Run a task only when a boolean condition is `true`.
+
+1. Create the file:
+
+```bash
+nano conditional_lab1.yml
+```
+
+2. Paste this playbook:
 
 ```yaml
 ---
@@ -50,8 +69,16 @@ Run a task only when a boolean condition is `true`.
       when: true
 ```
 
+3. Save and exit (`CTRL+O`, `ENTER`, `CTRL+X`).
+
+4. Run it:
+
+```bash
+ansible-playbook -i inventory.txt conditional_lab1.yml
+```
+
 **Information:**
-This first task shows the most basic use of a conditional. The `when` keyword is attached to the task, and the task only executes if the expression evaluates to `true`. If the condition is not met, the task is skipped instead of failed, making playbooks safer and more flexible.
+This is the simplest form of conditional logic. The task only executes if `when: true` evaluates to true. If you flip it to `false`, the task is skipped. Notice how Ansible outputs **“skipped”** instead of failing — this is key for safe automation. You can test “what if” scenarios without breaking devices.
 
 ---
 
@@ -60,6 +87,12 @@ This first task shows the most basic use of a conditional. The `when` keyword is
 ### Goal
 
 Only configure hostname if the device belongs to the `csr` group.
+
+```bash
+nano conditional_lab2.yml
+```
+
+Paste:
 
 ```yaml
 ---
@@ -74,14 +107,20 @@ Only configure hostname if the device belongs to the `csr` group.
 
   tasks:
     - name: Configure hostname only for CSR group
-      cisco.ios.ios_config:
+      ios_config:
         lines:
           - hostname {{ inventory_hostname }}
       when: "'csr' in group_names"
 ```
 
+Run:
+
+```bash
+ansible-playbook -i inventory.txt conditional_lab2.yml
+```
+
 **Information:**
-The variable `group_names` tracks which groups a host belongs to in your inventory file. This allows you to write a single playbook that can target multiple device types but still ensure certain commands are only executed against specific platforms. This prevents misconfigurations across different devices.
+Here you’re combining **inventory logic** with conditionals. `group_names` is a built-in Ansible variable that lists all groups the current host belongs to. If your inventory has routers, switches, and firewalls, you can still use one playbook — but ensure only the right tasks apply to the right devices. This keeps automation safe in mixed environments.
 
 ---
 
@@ -90,6 +129,12 @@ The variable `group_names` tracks which groups a host belongs to in your invento
 ### Goal
 
 Ping an IP, then only configure a banner if the ping succeeds.
+
+```bash
+nano conditional_lab3.yml
+```
+
+Paste:
 
 ```yaml
 ---
@@ -104,13 +149,13 @@ Ping an IP, then only configure a banner if the ping succeeds.
 
   tasks:
     - name: Ping Google DNS
-      cisco.ios.ios_command:
+      ios_command:
         commands:
           - ping 8.8.8.8
       register: ping_test
 
     - name: Configure banner only if ping succeeds
-      cisco.ios.ios_banner:
+      ios_banner:
         banner: motd
         text: |
           Internet connectivity confirmed - Managed by Ansible
@@ -118,12 +163,18 @@ Ping an IP, then only configure a banner if the ping succeeds.
       when: "'!!!!' in ping_test.stdout[0]"
 ```
 
+Run:
+
+```bash
+ansible-playbook -i inventory.txt conditional_lab3.yml
+```
+
 **Information:**
-The first task uses the `ios_command` module to run a ping, saving the output in a registered variable. The second task uses the dedicated `ios_banner` module to configure the MOTD banner, which is more structured and safer than pushing banner text with `ios_config`. The condition ensures the banner is only created if the ping succeeds.
+The first task executes a CLI command and **registers** its output into a variable (`ping_test`). The second task uses `when:` to inspect that variable. Cisco IOS marks successful pings with `!!!!`. By checking for this, you make the playbook *reactive*. This is real-world automation: tasks run only if the environment confirms it’s safe.
 
 ---
 
-## Lab 4 – Multiple Conditions (with `ios_interface`)
+## Lab 4 – Multiple Conditions
 
 ### Goal
 
@@ -131,6 +182,12 @@ Only configure a Loopback interface if:
 
 1. The device is a CSR, **and**
 2. The ping was successful.
+
+```bash
+nano conditional_lab4.yml
+```
+
+Paste:
 
 ```yaml
 ---
@@ -145,17 +202,24 @@ Only configure a Loopback interface if:
 
   tasks:
     - name: Configure Loopback10 if CSR and ping succeeded
-      cisco.ios.ios_interface:
-        name: Loopback10
-        description: Loopback created with conditionals
-        enabled: true
+      ios_config:
+        lines:
+          - interface Loopback10
+          - ip address 10.123.123.1 255.255.255.0
+          - description Loopback created with conditionals
       when:
         - "'csr' in inventory_hostname"
         - "'!!!!' in ping_test.stdout[0]"
 ```
 
+Run:
+
+```bash
+ansible-playbook -i inventory.txt conditional_lab4.yml
+```
+
 **Information:**
-Here, multiple conditions are checked before the task runs. The `ios_interface` module is used instead of raw configuration commands, which makes interface creation easier to read and maintain. The playbook will only create the loopback if both conditions are met, ensuring context-sensitive automation.
+Here you chain conditions together. Both must be true before the loopback is created. This is especially powerful in production: you can check device type, feature support, test results, or version numbers before applying configurations. It prevents misconfigurations and enforces **policy-driven automation**.
 
 ---
 
@@ -164,6 +228,12 @@ Here, multiple conditions are checked before the task runs. The `ios_interface` 
 ### Goal
 
 Print a warning only if the ping **failed**.
+
+```bash
+nano conditional_lab5.yml
+```
+
+Paste:
 
 ```yaml
 ---
@@ -183,8 +253,14 @@ Print a warning only if the ping **failed**.
       when: "'!!!!' not in ping_test.stdout[0]"
 ```
 
+Run:
+
+```bash
+ansible-playbook -i inventory.txt conditional_lab5.yml
+```
+
 **Information:**
-This uses a negation check. Instead of running when the ping succeeds, this task executes only if the success markers are missing. Negation allows you to add safety mechanisms, such as alerts or fallback actions, when normal conditions are not met.
+This reverses the logic. Instead of running on success, it runs only on failure. Negation is important in **self-healing playbooks**. For example: if a service is down, trigger a backup or raise an alert. It gives automation the ability to handle “what if things go wrong” scenarios.
 
 ---
 
@@ -202,3 +278,6 @@ By completing this progression, you should be able to:
 
 ✨ **Key takeaway:**
 Conditionals let you build **adaptive playbooks**. Instead of blindly running the same set of tasks, your automation **responds to context** — the type of device, test results, or the outcome of previous steps. This makes playbooks more reliable, efficient, and safer to run in production environments.
+
+---
+

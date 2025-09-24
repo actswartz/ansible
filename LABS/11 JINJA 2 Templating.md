@@ -1,6 +1,3 @@
-Got it 👍 — let’s enrich the **Jinja2 Templating Lab** so it’s more educational for students. I’ll add extra teaching content after each step, explain the “why,” and include validation commands so they can verify results on the router. I’ll also insert diagrams where it makes sense (flowcharts to show logic).
-
----
 
 # Lab – IOS-XE Playbooks with Jinja2 Templating
 
@@ -420,5 +417,3 @@ By completing this progression, you will:
 Jinja2 shifts automation from writing **static configs** to writing **rules that generate configs**. With one smart template and multiple variable files, you can automate entire networks at scale.
 
 ---
-
-Would you like me to **combine this with the Conditionals lab** into a single “Advanced Ansible Labs” guide, so students get a progressive flow (loops → conditionals → templating) in one continuous workbook?

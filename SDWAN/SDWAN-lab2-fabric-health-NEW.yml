@@ -1,0 +1,68 @@
+---
+- name: SDWAN Lab2 — Fabric Health Checks
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - cisco.catalystwan
+    - cisco.sdwan       # if you also use SDWAN-specific modules
+
+  vars:
+    # Credentials / connection to SDWAN controller / manager
+    manager:
+      url: "{{ vmanage_url }}"
+      username: "{{ vmanage_username }}"
+      password: "{{ vmanage_password }}"
+      verify: false
+
+    # Health check parameters
+    fabric_health_name: "lab2-fabric-health"
+    health_check_types:
+      - control_connections
+      - data_plane
+      - site_connectivity
+      - interface_status
+    timeout: 60
+    retry: 3
+
+  tasks:
+
+    - name: Trigger health checks on fabric
+      cisco.catalystwan.health_checks:
+        manager_authentication: "{{ manager }}"
+        name: "{{ fabric_health_name }}"
+        health_types: "{{ health_check_types }}"
+        timeout: "{{ timeout }}"
+        retry: "{{ retry }}"
+        state: present
+      register: health_job
+
+    - name: Wait for health check job to complete
+      cisco.catalystwan.health_checks_info:
+        manager_authentication: "{{ manager }}"
+        name: "{{ fabric_health_name }}"
+      register: health_status
+      until: health_status.status in ["completed", "failed"]
+      retries: 10
+      delay: 10
+
+    - name: Fetch health results
+      cisco.catalystwan.health_checks_report:
+        manager_authentication: "{{ manager }}"
+        name: "{{ fabric_health_name }}"
+      register: health_report
+
+    - name: Show health report
+      debug:
+        msg: "{{ health_report.report }}"
+
+    - name: Fail if any health check is critical
+      fail:
+        msg: "Fabric health check returned critical issues: {{ health_report.report }}"
+      when: health_report.report | selectattr("status", "equalto", "critical") | list | length > 0
+
+    - name: Cleanup health check job record (optional)
+      cisco.catalystwan.health_checks:
+        manager_authentication: "{{ manager }}"
+        name: "{{ fabric_health_name }}"
+        state: absent
+      when: health_status.status == "completed"

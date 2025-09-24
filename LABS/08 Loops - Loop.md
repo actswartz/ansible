@@ -149,10 +149,10 @@ nano acl_loop.yml
       cisco.ios.ios_config:
         lines:
           - permit {{ item.protocol }} {{ item.source }} {{ item.destination }}
-        parents: "ip access-list standard LAB-ACL"
+        parents: "ip access-list extended LAB-ACL"
       loop:
-        - { protocol: ip, source: 10.10.10.0 0.0.0.255: any }
-        - { protocol: ip, source: 10.20.20.0 0.0.0.255: any }
+        - { protocol: ip, source: 10.10.10.0 0.0.0.255, destination: any }
+        - { protocol: ip, source: 10.20.20.0 0.0.0.255, destination: any }
 ```
 
 **Run the playbook:**

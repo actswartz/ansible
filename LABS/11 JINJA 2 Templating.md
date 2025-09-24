@@ -1,4 +1,8 @@
-# Lab – IOS-XE Playbooks with Jinja2 Templating 
+Got it 👍 — let’s enrich the **Jinja2 Templating Lab** so it’s more educational for students. I’ll add extra teaching content after each step, explain the “why,” and include validation commands so they can verify results on the router. I’ll also insert diagrams where it makes sense (flowcharts to show logic).
+
+---
+
+# Lab – IOS-XE Playbooks with Jinja2 Templating
 
 ## Introduction
 
@@ -16,17 +20,26 @@ This transforms your playbooks from static scripts into **scalable, intelligent 
 
 ## Lab 1 – Simple Variable Substitution
 
-**Goal:**
-Learn how to use Jinja2 variables to make configurations reusable. Instead of hardcoding hostnames or banner text, you will define them in a separate variables file and substitute them into a template. This is the foundation of templating: separating **data** (variables) from **logic** (templates).
+### Goal
 
-**vars file (`vars_lab1.yml`):**
+Introduce variables so configs are reusable. Instead of changing hostnames or banners in the template itself, you only update the variables file.
+
+1. Create the variables file:
+
+```bash
+nano vars_lab1.yml
+```
 
 ```yaml
 hostname: CSR-TEMPLATE
 banner_message: "Welcome to CSR Router - Managed by Ansible Jinja2"
 ```
 
-**template file (`lab1_template.j2`):**
+2. Create the template file:
+
+```bash
+nano lab1_template.j2
+```
 
 ```jinja
 hostname {{ hostname }}
@@ -36,17 +49,65 @@ banner motd ^C
 ^C
 ```
 
+3. Create the playbook:
+
+```bash
+nano jinja2_lab1.yml
+```
+
+```yaml
+---
+- name: Jinja2 Lab 1 - Variable Substitution
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+  vars_files:
+    - vars_lab1.yml
+  vars:
+    ansible_become: yes
+    ansible_become_method: enable
+    ansible_become_password: cisco
+
+  tasks:
+    - name: Render template
+      template:
+        src: lab1_template.j2
+        dest: rendered_lab1.txt
+
+    - name: Apply config
+      ios_config:
+        src: rendered_lab1.txt
+```
+
+4. Run the playbook:
+
+```bash
+ansible-playbook -i inventory.txt jinja2_lab1.yml
+```
+
 **Information:**
-The placeholders `{{ hostname }}` and `{{ banner_message }}` are dynamically replaced by Ansible with the values stored in your variables file. This approach makes templates reusable across multiple devices. You can adjust the hostname or banner by editing just the variables, without ever touching the template itself.
+This teaches the principle of *separating logic from data*. The `lab1_template.j2` is reusable, and you can build dozens of configs just by swapping the variable file.
+
+**Validation:**
+
+```bash
+show running-config | include hostname
+show running-config | section banner
+```
 
 ---
 
 ## Lab 2 – Loops in Jinja2
 
-**Goal:**
-Learn how to generate repeated configurations dynamically. Instead of copy-pasting interface configs, you’ll use a loop to automatically build loopback interfaces based on a list of variables. This demonstrates how Jinja2 handles **scalable, repetitive tasks** efficiently.
+### Goal
 
-**vars file (`vars_lab2.yml`):**
+Show how loops generate repetitive sections (like loopback interfaces).
+
+1. Create the variables file:
+
+```bash
+nano vars_lab2.yml
+```
 
 ```yaml
 loopbacks:
@@ -54,7 +115,11 @@ loopbacks:
   - { id: 20, ip: 10.20.20.1, mask: 255.255.255.0 }
 ```
 
-**template file (`lab2_template.j2`):**
+2. Create the template:
+
+```bash
+nano lab2_template.j2
+```
 
 ```jinja
 {% for lb in loopbacks %}
@@ -64,17 +129,64 @@ interface Loopback{{ lb.id }}
 {% endfor %}
 ```
 
+3. Create the playbook:
+
+```bash
+nano jinja2_lab2.yml
+```
+
+```yaml
+---
+- name: Jinja2 Lab 2 - Loops
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+  vars_files:
+    - vars_lab2.yml
+  vars:
+    ansible_become: yes
+    ansible_become_method: enable
+    ansible_become_password: cisco
+
+  tasks:
+    - name: Render template
+      template:
+        src: lab2_template.j2
+        dest: rendered_lab2.txt
+
+    - name: Apply config
+      ios_config:
+        src: rendered_lab2.txt
+```
+
+4. Run it:
+
+```bash
+ansible-playbook -i inventory.txt jinja2_lab2.yml
+```
+
 **Information:**
-The `{% for %}` loop cycles through each dictionary in the list of loopbacks. Each loop iteration generates a unique configuration block for that loopback. If you need more interfaces, you only add new data in the variables file — the template logic stays the same.
+Loops allow data-driven scalability. Instead of writing the same config three times, you define the data and let Jinja2 render it.
+
+**Validation:**
+
+```bash
+show ip interface brief | include Loopback
+```
 
 ---
 
 ## Lab 3 – Conditionals in Jinja2
 
-**Goal:**
-Learn how to control whether or not certain parts of the configuration are generated. This teaches how Jinja2 conditionals (`{% if %}`) give templates the ability to **make decisions** based on rules.
+### Goal
 
-**vars file (`vars_lab3.yml`):**
+Teach decision-making logic inside templates.
+
+1. Variables file:
+
+```bash
+nano vars_lab3.yml
+```
 
 ```yaml
 loopbacks:
@@ -82,7 +194,11 @@ loopbacks:
   - { id: 20, ip: 10.20.20.1, mask: 255.255.255.0 }
 ```
 
-**template file (`lab3_template.j2`):**
+2. Template file:
+
+```bash
+nano lab3_template.j2
+```
 
 ```jinja
 {% for lb in loopbacks %}
@@ -94,17 +210,78 @@ interface Loopback{{ lb.id }}
 {% endfor %}
 ```
 
+3. Playbook:
+
+```bash
+nano jinja2_lab3.yml
+```
+
+```yaml
+---
+- name: Jinja2 Lab 3 - Conditionals
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+  vars_files:
+    - vars_lab3.yml
+  vars:
+    ansible_become: yes
+    ansible_become_method: enable
+    ansible_become_password: cisco
+
+  tasks:
+    - name: Render template with conditionals
+      template:
+        src: lab3_template.j2
+        dest: rendered_lab3.txt
+
+    - name: Apply config
+      ios_config:
+        src: rendered_lab3.txt
+```
+
+4. Run it:
+
+```bash
+ansible-playbook -i inventory.txt jinja2_lab3.yml
+```
+
 **Information:**
-This template uses a conditional inside a loop. Configurations are created only when the condition is satisfied (`id > 15`). This logic makes templates smarter and helps build context-aware configs, such as enabling IPv6 only when required or applying role-based settings depending on the router’s function.
+Now the template doesn’t blindly apply configs. It “thinks”: only loopbacks with IDs greater than 15 are configured.
+
+**Logic Flow Diagram:**
+
+```mermaid
+flowchart TD
+  A[Start Loop] --> B{lb.id > 15?}
+  B -- Yes --> C[Generate Config Block]
+  B -- No --> D[Skip Config]
+  C --> E[Next Item]
+  D --> E
+  E --> B
+```
+
+**Validation:**
+
+```bash
+show ip interface brief | include Loopback
+```
+
+Only Loopback20 should be created.
 
 ---
 
 ## Lab 4 – Combining Variables, Loops, and Conditionals
 
-**Goal:**
-Learn how to build a **complete, dynamic device config** by combining all Jinja2 concepts. This lab simulates a real-world scenario where some features (like NTP) are optional and others (like loopbacks, hostnames, and banners) are always present.
+### Goal
 
-**vars file (`vars_lab4.yml`):**
+Build a complete, dynamic device config that adapts to different roles.
+
+1. Variables file:
+
+```bash
+nano vars_lab4.yml
+```
 
 ```yaml
 hostname: CSR-COMPLEX
@@ -115,7 +292,11 @@ loopbacks:
   - { id: 40, ip: 10.40.40.1, mask: 255.255.255.0 }
 ```
 
-**template file (`lab4_template.j2`):**
+2. Template:
+
+```bash
+nano lab4_template.j2
+```
 
 ```jinja
 hostname {{ hostname }}
@@ -135,21 +316,15 @@ interface Loopback{{ lb.id }}
 {% endfor %}
 ```
 
-**Information:**
-This combined template shows how different Jinja2 constructs work together. Variables define unique values like the hostname, loops generate repeated structures like loopbacks, and conditionals ensure optional features like NTP are only included when flagged. With this design, one template can serve many roles just by changing the data file.
+3. Playbook:
 
----
-
-## Lab 5 – Apply with Playbook
-
-**Goal:**
-Learn how to **render a Jinja2 template into a configuration file** and then safely push it to the router. This models a real production workflow where configs are reviewed before deployment.
-
-**playbook (`jinja2_lab.yml`):**
+```bash
+nano jinja2_lab4.yml
+```
 
 ```yaml
 ---
-- name: IOS-XE Jinja2 Template Progression Lab
+- name: Jinja2 Lab 4 - Combined Features
   hosts: csr
   gather_facts: no
   connection: network_cli
@@ -161,27 +336,44 @@ Learn how to **render a Jinja2 template into a configuration file** and then saf
     ansible_become_password: cisco
 
   tasks:
-    - name: Render config from Jinja2 template
+    - name: Render combined template
       template:
         src: lab4_template.j2
-        dest: rendered_config.txt
+        dest: rendered_lab4.txt
 
-    - name: Apply rendered config to device
-      cisco.ios.ios_config:
-        src: rendered_config.txt
+    - name: Apply rendered config
+      ios_config:
+        src: rendered_lab4.txt
+```
+
+Run it:
+
+```bash
+ansible-playbook -i inventory.txt jinja2_lab4.yml
 ```
 
 **Information:**
-This playbook follows a two-step workflow. First, the `template` module generates a rendered text file based on variables and the template. Second, the `ios_config` module applies that generated configuration to the device. This workflow mimics real-world operations, where engineers want to review configs before pushing them live.
+This template integrates everything. It applies hostname and banners universally, creates loopbacks based on data, and conditionally enables NTP if the flag is set. This is close to real production automation.
+
+**Validation:**
+
+```bash
+show run | include hostname
+show run | include ntp
+show ip interface brief | include Loopback
+```
 
 ---
 
-## Stretch Task – Nested Loops
+## Lab 5 – Nested Loops (Stretch Task)
 
-**Goal:**
-Learn how to model hierarchical data (like VLANs with associated interfaces). This helps you understand how Jinja2 scales to large, complex configs.
+### Goal
 
-**template file (`nested_template.j2`):**
+Practice hierarchical data structures with nested loops.
+
+```bash
+nano nested_template.j2
+```
 
 ```jinja
 {% for vlan in vlans %}
@@ -195,7 +387,21 @@ interface {{ intf }}
 ```
 
 **Information:**
-The outer loop builds VLAN definitions, and the inner loop assigns interfaces to those VLANs. This mirrors real production use cases like ACL entries, BGP neighbors, or VRFs. Nested loops are powerful for modeling hierarchical relationships in network configurations.
+This is how you handle multi-level configurations (VLANs with interfaces, ACLs with multiple rules, VRFs with routes, etc.).
+
+**Logic Flow Diagram:**
+
+```mermaid
+flowchart TD
+  A[Start VLAN Loop] --> B[Define VLAN ID + Name]
+  B --> C[Start Interface Loop]
+  C --> D[Assign VLAN to Interface]
+  D --> E{More Interfaces?}
+  E -- Yes --> C
+  E -- No --> F{More VLANs?}
+  F -- Yes --> A
+  F -- No --> G[End]
+```
 
 ---
 
@@ -205,10 +411,14 @@ By completing this progression, you will:
 
 * Understand and use **variables, loops, and conditionals** in Jinja2.
 * Write templates that scale across many routers.
-* Safely render and apply configs.
-* Build reusable templates for real-world scenarios.
+* Render and review configs before applying them.
+* Build reusable templates for real-world IOS-XE automation.
 
 ---
 
 ✨ **Key Takeaway:**
 Jinja2 shifts automation from writing **static configs** to writing **rules that generate configs**. With one smart template and multiple variable files, you can automate entire networks at scale.
+
+---
+
+Would you like me to **combine this with the Conditionals lab** into a single “Advanced Ansible Labs” guide, so students get a progressive flow (loops → conditionals → templating) in one continuous workbook?

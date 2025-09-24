@@ -4,14 +4,14 @@ ssh [ngc@go.nr4.com](mailto:ngc@go.nr4.com)
 
 password: [instructor]
 
-cd ‘your_directory’
-
+cd your_directory
+```
 mkdir wed
 
 cd wed
 
 nano inventory.txt
-
+```
 (Make it look like the below, but change the last octet of the IP address to match your device.)
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

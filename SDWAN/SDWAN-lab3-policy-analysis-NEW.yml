@@ -1,0 +1,64 @@
+---
+- name: SDWAN Lab3 — Policy Analysis
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - cisco.catalystwan
+    - cisco.sdwan     # if your setup uses a separate SDWAN collection
+
+  vars:
+    manager:
+      url: "{{ vmanage_url }}"
+      username: "{{ vmanage_username }}"
+      password: "{{ vmanage_password }}"
+      verify: false
+
+    policy_name: "lab3-policy-analysis"
+    # you may want to analyze control, data, vpn-membership policies
+    policy_types:
+      - control_policy
+      - data_policy
+      - vpn_membership_policy
+
+  tasks:
+
+    - name: Trigger policy analysis / validation
+      cisco.catalystwan.policy_analysis:
+        manager_authentication: "{{ manager }}"
+        name: "{{ policy_name }}"
+        types: "{{ policy_types }}"
+        state: present
+      register: policy_job
+
+    - name: Wait for policy analysis job to finish
+      cisco.catalystwan.policy_analysis_info:
+        manager_authentication: "{{ manager }}"
+        name: "{{ policy_name }}"
+      register: policy_status
+      until: policy_status.job_status in ["completed", "failed"]
+      retries: 10
+      delay: 10
+
+    - name: Fetch policy analysis results
+      cisco.catalystwan.policy_analysis_report:
+        manager_authentication: "{{ manager }}"
+        name: "{{ policy_name }}"
+      register: policy_report
+
+    - name: Display policy report
+      debug:
+        msg:
+          - "Policy analysis status: {{ policy_status.job_status }}"
+          - "Report: {{ policy_report.report }}"
+
+    - name: Fail if any policy issues found
+      fail:
+        msg: "Policy analysis detected issues in {{ policy_report.report }}"
+      when: policy_report.report | selectattr("severity", "equalto", "error") | list | length > 0
+
+    - name: Clean up the analysis job record (optional)
+      cisco.catalystwan.policy_analysis:
+        manager_authentication: "{{ manager }}"
+        name: "{{ policy_name }}"
+        state: absent
+      when: policy_status.job_status == "completed"

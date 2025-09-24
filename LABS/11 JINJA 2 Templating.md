@@ -1,4 +1,4 @@
-# Lab – IOS-XE Playbooks with Jinja2 Templating (Progression Pack)
+# Lab – IOS-XE Playbooks with Jinja2 Templating 
 
 ## Introduction
 

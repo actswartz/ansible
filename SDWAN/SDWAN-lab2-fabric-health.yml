@@ -1,4 +1,4 @@
----
+  ---
 - name: SDWAN Lab 2 - Catalyst WAN Fabric Status and Health Monitoring
   hosts: localhost
   gather_facts: no

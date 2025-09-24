@@ -53,7 +53,19 @@ Create `loopcontrol_lab.yml` with this task:
 ```
 
 **Information:**
-This playbook configures two loopback interfaces. When you run it, Ansible will display the entire dictionary for each loop iteration, such as `{ name: Loopback80, ip: 10.80.80.1, ... }`. This shows all the variables being used but can be cluttered when dealing with many items. It is important to notice how much information is shown because later you will compare it to a cleaner version using `loop_control`.
+This playbook configures two loopback interfaces. When you run it, Ansible will display the entire dictionary for each loop iteration, such as `{ name: Loopback80, ip: 10.80.80.1, ... }`. This shows all the variables being used but can be cluttered when dealing with many items.
+
+**Flowchart of Default Loop Execution:**
+
+```mermaid
+flowchart TD
+  A[Start Task] --> B[Take First Dictionary Item]
+  B --> C[Print Full Dictionary in Output]
+  C --> D[Configure Loopback Interface]
+  D --> E{More Items?}
+  E -- Yes --> B
+  E -- No --> F[End]
+```
 
 ---
 
@@ -76,7 +88,19 @@ Now add another task in the same playbook using `loop_control`:
 ```
 
 **Information:**
-Here, the `loop_control` keyword is added with the `label` option. This changes how Ansible displays loop iterations. Instead of printing the full dictionary with all fields, the output now shows only the value of `item.name`. This makes it easier to scan and identify which interface is being configured. Even though the configuration being applied is the same, the console output becomes shorter, clearer, and more focused on what matters most — the interface name.
+Here, the `loop_control` keyword is added with the `label` option. Instead of printing the full dictionary, the output now shows only the interface name. This makes the console output shorter, clearer, and more focused.
+
+**Flowchart of Loop with `loop_control`:**
+
+```mermaid
+flowchart TD
+  A[Start Task] --> B[Take Current Item]
+  B --> C[Show Item.name as Label]
+  C --> D[Configure Loopback Interface]
+  D --> E{More Items?}
+  E -- Yes --> B
+  E -- No --> F[End]
+```
 
 ---
 
@@ -89,7 +113,7 @@ ansible-playbook -i inventory.txt loopcontrol_lab.yml
 ```
 
 **Information:**
-When this playbook runs, you will see two tasks back-to-back. The first one (default loop) shows long dictionary outputs, while the second one (with `loop_control`) displays only the chosen label. Comparing these outputs side by side highlights how `loop_control` improves readability. In larger playbooks with many interfaces or ACL entries, this makes troubleshooting and monitoring progress much easier.
+When this playbook runs, the first task shows long dictionary outputs, while the second (with `loop_control`) displays only the chosen label. Comparing both makes it clear how `loop_control` improves readability.
 
 ---
 
@@ -102,7 +126,7 @@ show ip interface brief | include Loopback
 ```
 
 **Information:**
-You should see four new loopback interfaces: Loopback80, Loopback90, Loopback100, and Loopback110. This confirms that both tasks successfully applied the configurations. Even though the output format in Ansible was different, the end result on the device is identical. This step emphasizes that `loop_control` does not change what happens on the router — it only changes how the process is displayed to you.
+You should see four new loopback interfaces: Loopback80, Loopback90, Loopback100, and Loopback110. This confirms that both tasks successfully applied the configurations. `loop_control` does not change what happens on the router — it only changes how the process is displayed to you.
 
 ---
 
@@ -114,6 +138,8 @@ By the end of this lab, you should be able to:
 * Use `loop_control` to label iterations with a meaningful identifier
 * Understand why `loop_control` makes playbook output easier to read and debug
 * Confirm IOS-XE interfaces were configured correctly
+
+---
 
 ---
 

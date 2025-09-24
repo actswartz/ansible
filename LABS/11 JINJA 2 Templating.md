@@ -36,11 +36,8 @@ banner motd ^C
 ^C
 ```
 
-**Explanation:**
-
-* `{{ hostname }}` and `{{ banner_message }}` are placeholders.
-* Jinja2 replaces them with values from `vars_lab1.yml` at runtime.
-* One template now works for many routers — you only need to update the variable file.
+**Information:**
+The placeholders `{{ hostname }}` and `{{ banner_message }}` are dynamically replaced by Ansible with the values stored in your variables file. This approach makes templates reusable across multiple devices. You can adjust the hostname or banner by editing just the variables, without ever touching the template itself.
 
 ---
 
@@ -67,13 +64,8 @@ interface Loopback{{ lb.id }}
 {% endfor %}
 ```
 
-**Explanation:**
-
-* `{% for lb in loopbacks %}` loops through each dictionary in the list.
-* Each iteration generates an interface block with its own ID, IP, and mask.
-* Adding new interfaces = just add a new entry in the vars file.
-
-This is where automation shines: you define *data once* and let Jinja2 generate all the configs.
+**Information:**
+The `{% for %}` loop cycles through each dictionary in the list of loopbacks. Each loop iteration generates a unique configuration block for that loopback. If you need more interfaces, you only add new data in the variables file — the template logic stays the same.
 
 ---
 
@@ -102,15 +94,8 @@ interface Loopback{{ lb.id }}
 {% endfor %}
 ```
 
-**Explanation:**
-
-* The template only generates configs for loopbacks with ID > 15.
-* This introduces **logic-based configuration**.
-* Real-world use cases:
-
-  * Only configure BGP if router role == edge.
-  * Only enable IPv6 if a flag is true.
-  * Only apply special banners in production.
+**Information:**
+This template uses a conditional inside a loop. Configurations are created only when the condition is satisfied (`id > 15`). This logic makes templates smarter and helps build context-aware configs, such as enabling IPv6 only when required or applying role-based settings depending on the router’s function.
 
 ---
 
@@ -150,13 +135,8 @@ interface Loopback{{ lb.id }}
 {% endfor %}
 ```
 
-**Explanation:**
-
-* `hostname` and `banner` are filled in from variables.
-* `ntp_enabled` flag controls whether NTP config is added.
-* Loop generates all loopbacks.
-
-This template is **device-role aware** — changing a single variable file can make it behave differently for HQ, branch, or lab routers.
+**Information:**
+This combined template shows how different Jinja2 constructs work together. Variables define unique values like the hostname, loops generate repeated structures like loopbacks, and conditionals ensure optional features like NTP are only included when flagged. With this design, one template can serve many roles just by changing the data file.
 
 ---
 
@@ -175,6 +155,10 @@ Learn how to **render a Jinja2 template into a configuration file** and then saf
   connection: network_cli
   vars_files:
     - vars_lab4.yml
+  vars:
+    ansible_become: yes
+    ansible_become_method: enable
+    ansible_become_password: cisco
 
   tasks:
     - name: Render config from Jinja2 template
@@ -187,18 +171,15 @@ Learn how to **render a Jinja2 template into a configuration file** and then saf
         src: rendered_config.txt
 ```
 
-**Explanation:**
-
-* First task: `template` generates a plain-text config (`rendered_config.txt`).
-* Second task: pushes that config to the router with `ios_config`.
-* This workflow is standard in production: **review first, deploy second**.
+**Information:**
+This playbook follows a two-step workflow. First, the `template` module generates a rendered text file based on variables and the template. Second, the `ios_config` module applies that generated configuration to the device. This workflow mimics real-world operations, where engineers want to review configs before pushing them live.
 
 ---
 
 ## Stretch Task – Nested Loops
 
 **Goal:**
-Learn how to model hierarchical data (like VLANs with associated interfaces). This helps students understand how Jinja2 scales to large, complex configs.
+Learn how to model hierarchical data (like VLANs with associated interfaces). This helps you understand how Jinja2 scales to large, complex configs.
 
 **template file (`nested_template.j2`):**
 
@@ -213,11 +194,8 @@ interface {{ intf }}
 {% endfor %}
 ```
 
-**Explanation:**
-
-* Outer loop builds VLANs.
-* Inner loop assigns interfaces to those VLANs.
-* This approach works for ACLs, VRFs, BGP neighbors, or any hierarchical config.
+**Information:**
+The outer loop builds VLAN definitions, and the inner loop assigns interfaces to those VLANs. This mirrors real production use cases like ACL entries, BGP neighbors, or VRFs. Nested loops are powerful for modeling hierarchical relationships in network configurations.
 
 ---
 
@@ -234,6 +212,3 @@ By completing this progression, you will:
 
 ✨ **Key Takeaway:**
 Jinja2 shifts automation from writing **static configs** to writing **rules that generate configs**. With one smart template and multiple variable files, you can automate entire networks at scale.
-
----
-

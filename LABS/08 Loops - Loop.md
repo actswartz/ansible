@@ -1,4 +1,3 @@
-
 # Lab – IOS-XE Playbooks with Loops
 
 ---
@@ -63,6 +62,17 @@ nano ntp_loop.yml
 ansible-playbook -i inventory.txt ntp_loop.yml
 ```
 
+**Flowchart of Loop Execution:**
+
+```mermaid
+flowchart TD
+  A[Start Playbook] --> B[Take First NTP Server]
+  B --> C[Configure NTP Server]
+  C --> D{More Servers?}
+  D -- Yes --> B
+  D -- No --> E[End]
+```
+
 ---
 
 ### Step 2 – Dictionary Loop (Multiple Parameters)
@@ -102,6 +112,18 @@ nano loopback_interfaces.yml
 ansible-playbook -i inventory.txt loopback_interfaces.yml
 ```
 
+**Flowchart of Dictionary Loop Execution:**
+
+```mermaid
+flowchart TD
+  A[Start Playbook] --> B[Take First Dictionary Item]
+  B --> C[Extract Name, IP, Mask, Desc]
+  C --> D[Configure Loopback Interface]
+  D --> E{More Dictionary Items?}
+  E -- Yes --> B
+  E -- No --> F[End]
+```
+
 ---
 
 ### Step 3 – Advanced Loop (Structured Configurations)
@@ -137,6 +159,18 @@ nano acl_loop.yml
 
 ```bash
 ansible-playbook -i inventory.txt acl_loop.yml
+```
+
+**Flowchart of ACL Loop Execution:**
+
+```mermaid
+flowchart TD
+  A[Start ACL Task] --> B[Take First ACL Entry]
+  B --> C[Insert Protocol, Source, Destination]
+  C --> D[Apply to ACL LAB-ACL]
+  D --> E{More Entries?}
+  E -- Yes --> B
+  E -- No --> F[End]
 ```
 
 ---
@@ -176,6 +210,18 @@ nano ntp_loop_control.yml
 
 ```bash
 ansible-playbook -i inventory.txt ntp_loop_control.yml
+```
+
+**Flowchart of Loop with `loop_control`:**
+
+```mermaid
+flowchart TD
+  A[Start Task] --> B[Take Current Item]
+  B --> C[Label Output with Item Value]
+  C --> D[Configure NTP Server]
+  D --> E{More Items?}
+  E -- Yes --> B
+  E -- No --> F[End]
 ```
 
 ---

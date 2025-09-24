@@ -33,14 +33,25 @@ By the end of this lab sequence, you’ll see how conditionals transform playboo
 Run a task only when a boolean condition is `true`.
 
 ```yaml
+---
+- name: Simple Conditional Example
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+  vars:
+    ansible_become: yes
+    ansible_become_method: enable
+    ansible_become_password: cisco
+
+  tasks:
     - name: Always skipped unless condition is true
       debug:
         msg: "This task only runs when condition is true"
       when: true
 ```
 
-**Educational Note:**
-This seems trivial, but it’s your first look at Ansible’s **conditional execution model**. Every task can have a `when:` clause. If the condition is false, the task is **skipped** (not failed). This introduces safety: you can define tasks that only run in specific scenarios.
+**Information:**
+This first task shows the most basic use of a conditional. The `when` keyword is attached to the task, and the task only executes if the expression evaluates to `true`. If the condition is not met, the task is skipped instead of failed, making playbooks safer and more flexible.
 
 ---
 
@@ -51,6 +62,17 @@ This seems trivial, but it’s your first look at Ansible’s **conditional exec
 Only configure hostname if the device belongs to the `csr` group.
 
 ```yaml
+---
+- name: Hostname Conditional Example
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+  vars:
+    ansible_become: yes
+    ansible_become_method: enable
+    ansible_become_password: cisco
+
+  tasks:
     - name: Configure hostname only for CSR group
       cisco.ios.ios_config:
         lines:
@@ -58,21 +80,29 @@ Only configure hostname if the device belongs to the `csr` group.
       when: "'csr' in group_names"
 ```
 
-**Educational Note:**
-
-* `group_names` is a built-in Ansible variable that lists all groups a host belongs to.
-* Using it allows you to build **multi-device-type playbooks** but still apply certain configs only where they belong.
-* This is key in production, where you might have a mix of CSR routers, Catalyst switches, and Nexus devices.
+**Information:**
+The variable `group_names` tracks which groups a host belongs to in your inventory file. This allows you to write a single playbook that can target multiple device types but still ensure certain commands are only executed against specific platforms. This prevents misconfigurations across different devices.
 
 ---
 
-## Lab 3 – Registered Variable Conditional
+## Lab 3 – Registered Variable Conditional (with `ios_banner`)
 
 ### Goal
 
 Ping an IP, then only configure a banner if the ping succeeds.
 
 ```yaml
+---
+- name: Registered Variable Conditional Example
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+  vars:
+    ansible_become: yes
+    ansible_become_method: enable
+    ansible_become_password: cisco
+
+  tasks:
     - name: Ping Google DNS
       cisco.ios.ios_command:
         commands:
@@ -80,24 +110,20 @@ Ping an IP, then only configure a banner if the ping succeeds.
       register: ping_test
 
     - name: Configure banner only if ping succeeds
-      cisco.ios.ios_config:
-        lines:
-          - banner motd ^C
-          - Internet connectivity confirmed - Managed by Ansible
-          - ^C
+      cisco.ios.ios_banner:
+        banner: motd
+        text: |
+          Internet connectivity confirmed - Managed by Ansible
+        state: present
       when: "'!!!!' in ping_test.stdout[0]"
 ```
 
-**Educational Note:**
-
-* `register` saves task results into a variable (`ping_test`).
-* You can reference its values inside a `when` condition.
-* In this case, a Cisco IOS XE successful ping prints `!!!!`. The condition checks for that string.
-* This is **reactive automation** — Ansible makes decisions based on real device feedback.
+**Information:**
+The first task uses the `ios_command` module to run a ping, saving the output in a registered variable. The second task uses the dedicated `ios_banner` module to configure the MOTD banner, which is more structured and safer than pushing banner text with `ios_config`. The condition ensures the banner is only created if the ping succeeds.
 
 ---
 
-## Lab 4 – Multiple Conditions
+## Lab 4 – Multiple Conditions (with `ios_interface`)
 
 ### Goal
 
@@ -107,22 +133,29 @@ Only configure a Loopback interface if:
 2. The ping was successful.
 
 ```yaml
+---
+- name: Multiple Conditions Example
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+  vars:
+    ansible_become: yes
+    ansible_become_method: enable
+    ansible_become_password: cisco
+
+  tasks:
     - name: Configure Loopback10 if CSR and ping succeeded
-      cisco.ios.ios_config:
-        lines:
-          - ip address 10.123.123.1 255.255.255.0
-          - description Loopback created with conditionals
-        parents: "interface Loopback10"
+      cisco.ios.ios_interface:
+        name: Loopback10
+        description: Loopback created with conditionals
+        enabled: true
       when:
         - "'csr' in inventory_hostname"
         - "'!!!!' in ping_test.stdout[0]"
 ```
 
-**Educational Note:**
-
-* `when` can take a list of conditions.
-* All must be true for the task to run.
-* This is where Ansible starts to feel like a **rules engine** — tasks only apply when the environment matches your logic.
+**Information:**
+Here, multiple conditions are checked before the task runs. The `ios_interface` module is used instead of raw configuration commands, which makes interface creation easier to read and maintain. The playbook will only create the loopback if both conditions are met, ensuring context-sensitive automation.
 
 ---
 
@@ -133,14 +166,25 @@ Only configure a Loopback interface if:
 Print a warning only if the ping **failed**.
 
 ```yaml
+---
+- name: Negation Example
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+  vars:
+    ansible_become: yes
+    ansible_become_method: enable
+    ansible_become_password: cisco
+
+  tasks:
     - name: Print warning if ping failed
       debug:
         msg: "Ping to 8.8.8.8 failed!"
       when: "'!!!!' not in ping_test.stdout[0]"
 ```
 
-**Educational Note:**
-Negation is just as important as positive conditions. Sometimes you only want a task to fire in *failure* scenarios (e.g., run a backup config if the primary check fails).
+**Information:**
+This uses a negation check. Instead of running when the ping succeeds, this task executes only if the success markers are missing. Negation allows you to add safety mechanisms, such as alerts or fallback actions, when normal conditions are not met.
 
 ---
 
@@ -157,7 +201,4 @@ By completing this progression, you should be able to:
 ---
 
 ✨ **Key takeaway:**
-Conditionals let you build **adaptive playbooks**. Instead of blindly running the same set of tasks, your automation **responds to context** — the type of device, test results, or the outcome of previous steps.
-
----
-
+Conditionals let you build **adaptive playbooks**. Instead of blindly running the same set of tasks, your automation **responds to context** — the type of device, test results, or the outcome of previous steps. This makes playbooks more reliable, efficient, and safer to run in production environments.

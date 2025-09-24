@@ -151,8 +151,8 @@ nano acl_loop.yml
           - permit {{ item.protocol }} {{ item.source }} {{ item.destination }}
         parents: "ip access-list standard LAB-ACL"
       loop:
-        - { protocol: ip, source: 10.10.10.0 0.0.0.255, destination: any }
-        - { protocol: ip, source: 10.20.20.0 0.0.0.255, destination: any }
+        - { protocol: ip, source: 10.10.10.0 0.0.0.255: any }
+        - { protocol: ip, source: 10.20.20.0 0.0.0.255: any }
 ```
 
 **Run the playbook:**

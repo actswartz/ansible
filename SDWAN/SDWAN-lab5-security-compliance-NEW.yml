@@ -1,0 +1,66 @@
+---
+- name: SDWAN Lab5 — Security Compliance Checks
+  hosts: localhost
+  gather_facts: no
+  collections:
+    - cisco.catalystwan
+    - cisco.sdwan    # include if policy/compliance modules are in that collection
+
+  vars:
+    manager:
+      url: "{{ vmanage_url }}"
+      username: "{{ vmanage_username }}"
+      password: "{{ vmanage_password }}"
+      verify: false
+
+    compliance_job_name: "lab5-security-compliance"
+    compliance_profiles:           # a list of compliance profiles/rulesets you want to run
+      - baseline_security
+      - vpn_policy_compliance
+      - access_control
+    retry: 3
+    timeout: 60
+
+  tasks:
+    - name: Trigger security compliance scan
+      cisco.catalystwan.security_compliance:
+        manager_authentication: "{{ manager }}"
+        name: "{{ compliance_job_name }}"
+        profiles: "{{ compliance_profiles }}"
+        retry: "{{ retry }}"
+        timeout: "{{ timeout }}"
+        state: present
+      register: compliance_job
+
+    - name: Wait for compliance scan to finish
+      cisco.catalystwan.security_compliance_info:
+        manager_authentication: "{{ manager }}"
+        name: "{{ compliance_job_name }}"
+      register: compliance_status
+      until: compliance_status.status in ["completed", "failed"]
+      retries: 10
+      delay: 10
+
+    - name: Fetch compliance report
+      cisco.catalystwan.security_compliance_report:
+        manager_authentication: "{{ manager }}"
+        name: "{{ compliance_job_name }}"
+      register: compliance_report
+
+    - name: Display compliance results
+      debug:
+        msg:
+          - "Compliance scan status: {{ compliance_status.status }}"
+          - "Findings: {{ compliance_report.findings }}"
+
+    - name: Fail if any compliance violation is critical
+      fail:
+        msg: "Security compliance scan found critical violations: {{ compliance_report.findings }}"
+      when: compliance_report.findings | selectattr("severity", "equalto", "critical") | list | length > 0
+
+    - name: Cleanup compliance job (optional)
+      cisco.catalystwan.security_compliance:
+        manager_authentication: "{{ manager }}"
+        name: "{{ compliance_job_name }}"
+        state: absent
+      when: compliance_status.status == "completed"

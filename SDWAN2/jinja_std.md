@@ -41,8 +41,8 @@ all:
     csr1:
       ansible_host: 10.10.20.21X
   vars:
-    ansible_user: admin
-    ansible_password: Cisco123
+    ansible_user: cisco
+    ansible_password: cisco
     ansible_network_os: ios
 ```
 

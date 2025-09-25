@@ -1,81 +1,60 @@
 
 
-# 🧪 Lab Book — Learning Jinja2 Templates with Ansible
+# 🧪 Lab Book — Jinja2 Templates with One CSR1000v Router
 
 ---
 
 ## Lab 0 — Goal & Setup
 
-### 🎯 Goal
+**Goal**
+Use a single Cisco CSR1000v router to learn Jinja2 templating with Ansible.
 
-Learn how to build **dynamic network configurations** using Jinja2 templates inside Ansible. By the end you will know how to:
+**Environment:**
 
-* Create and organize project files
-* Build **templates** that render values from variables
-* Use **loops** and **conditionals**
-* Generate configurations for many devices quickly
-* Send configurations to Cisco devices or to Catalyst Center templates
-
----
-
-### 🧰 Why Jinja2?
-
-* **Dynamic** — Replace hardcoded values with variables.
-* **Reusable** — One template can configure many devices.
-* **Readable** — Network engineers can understand YAML and Jinja2 easily.
+* One CSR1000v router with management IP **10.10.20.21X**
+  *(replace X with your actual last digit — e.g., 10.10.20.211)*
+* Python 3.8+ and Ansible installed on your control machine
 
 ---
 
-### 🛠 Environment Setup
-
-1. Create a folder for the labs:
+### Step 1 — Create Working Folder
 
 ```bash
-mkdir -p ~/ansible-jinja-labs/templates group_vars
-cd ~/ansible-jinja-labs
+mkdir -p ~/ansible-jinja-csr/templates group_vars
+cd ~/ansible-jinja-csr
 ```
 
-2. Install Ansible:
+### Step 2 — Install Ansible
 
 ```bash
 sudo apt update && sudo apt install ansible -y
 ansible --version
 ```
 
-> This verifies Ansible is ready to use.
+### Step 3 — Create Inventory File
 
-3. Create your inventory file — this defines your lab devices:
-
-`inventory.yml`
+`inventory.yml`:
 
 ```yaml
 all:
   hosts:
-    switch1:
-      ansible_host: 192.168.56.11
-    switch2:
-      ansible_host: 192.168.56.12
+    csr1:
+      ansible_host: 10.10.20.21X
   vars:
     ansible_user: admin
     ansible_password: Cisco123
     ansible_network_os: ios
 ```
 
-> **`ansible_network_os: ios`** tells Ansible these are Cisco IOS devices.
+✅ `csr1` is your single router.
 
 ---
 
-## Lab 1 — Your First Template (Banners)
+## Lab 1 — Simple Banner
 
-### 🧠 Concept
+### Template
 
-A banner is a simple test of templating. We’ll insert each device’s hostname dynamically.
-
-### Steps
-
-1. **Template**
-
-Create `templates/banner.j2`:
+`templates/banner.j2`:
 
 ```jinja
 !
@@ -85,9 +64,7 @@ Authorized users only!
 ^
 ```
 
-* `{{ inventory_hostname }}` = name from inventory (e.g., switch1).
-
-2. **Playbook**
+### Playbook
 
 `banner.yml`:
 
@@ -97,140 +74,21 @@ Authorized users only!
   hosts: all
   gather_facts: no
   tasks:
-    - name: Push banner using template
-      ios_config:
+    - ios_config:
         src: templates/banner.j2
 ```
 
-3. **Run**
+### Run
 
 ```bash
 ansible-playbook -i inventory.yml banner.yml
 ```
 
-✅ Each device shows its own hostname in the banner.
-
 ---
 
-## Lab 2 — Loops to Build Interfaces
+## Lab 2 — VLAN Creation
 
-### 🧠 Concept
-
-Use a list of interfaces and loop through them to generate config.
-
-1. **Variables**
-
-`group_vars/all.yml`:
-
-```yaml
-interfaces:
-  - { name: Gig1/0/1, desc: User1, vlan: 10 }
-  - { name: Gig1/0/2, desc: User2, vlan: 20 }
-```
-
-* `interfaces` is a list of dictionaries. Each has a name, description, VLAN.
-
-2. **Template**
-
-`templates/interfaces.j2`:
-
-```jinja
-{% for intf in interfaces %}
-interface {{ intf.name }}
- description {{ intf.desc }}
- switchport access vlan {{ intf.vlan }}
- spanning-tree portfast
-{% endfor %}
-```
-
-* `{% for %}` loops through each item in the list.
-
-3. **Playbook**
-
-`interfaces.yml`:
-
-```yaml
----
-- name: Configure Interfaces
-  hosts: all
-  gather_facts: no
-  tasks:
-    - ios_config:
-        src: templates/interfaces.j2
-```
-
-4. **Run**
-
-```bash
-ansible-playbook -i inventory.yml interfaces.yml
-```
-
-✅ All interfaces defined in the list get configured.
-
----
-
-## Lab 3 — Add Logic with Conditionals
-
-### 🧠 Concept
-
-Only add certain lines if a variable is true.
-
-1. **Variables**
-
-`group_vars/all.yml`:
-
-```yaml
-interfaces:
-  - { name: Gig1/0/3, desc: HR-PC, vlan: 30, portfast: true }
-  - { name: Gig1/0/4, desc: Camera, vlan: 40 }
-```
-
-2. **Template**
-
-`templates/intf_conditional.j2`:
-
-```jinja
-{% for intf in interfaces %}
-interface {{ intf.name }}
- description {{ intf.desc }}
- switchport access vlan {{ intf.vlan }}
-{% if intf.portfast %}
- spanning-tree portfast
-{% endif %}
-{% endfor %}
-```
-
-* `if intf.portfast` means only those with portfast true will get the line.
-
-3. **Playbook**
-
-`intf_conditional.yml`:
-
-```yaml
----
-- name: Configure Conditional Interfaces
-  hosts: all
-  gather_facts: no
-  tasks:
-    - ios_config:
-        src: templates/intf_conditional.j2
-```
-
-4. **Run**
-
-```bash
-ansible-playbook -i inventory.yml intf_conditional.yml
-```
-
----
-
-## Lab 4 — Building VLAN Configs
-
-### 🧠 Concept
-
-Generate many VLANs from a list.
-
-1. **Variables**
+### Variables
 
 `group_vars/all.yml`:
 
@@ -238,10 +96,9 @@ Generate many VLANs from a list.
 vlans:
   - { id: 10, name: USERS }
   - { id: 20, name: VOICE }
-  - { id: 30, name: CAMERAS }
 ```
 
-2. **Template**
+### Template
 
 `templates/vlans.j2`:
 
@@ -252,7 +109,7 @@ vlan {{ vlan.id }}
 {% endfor %}
 ```
 
-3. **Playbook**
+### Playbook
 
 `vlans.yml`:
 
@@ -266,82 +123,80 @@ vlan {{ vlan.id }}
         src: templates/vlans.j2
 ```
 
-4. **Run**
+### Run
 
 ```bash
 ansible-playbook -i inventory.yml vlans.yml
 ```
 
-✅ Each VLAN gets created with its name.
-
 ---
 
-## Lab 5 — Generate Catalyst Center Template
+## Lab 3 — Interfaces with Loops & Conditionals
 
-### 🧠 Concept
-
-Use Jinja2 to dynamically build Catalyst Center (DNA Center) templates.
-
-1. **Variables**
+### Variables
 
 `group_vars/all.yml`:
 
 ```yaml
-vlans:
-  - { id: 10, ip: 192.168.10.1 }
-  - { id: 20, ip: 192.168.20.1 }
+interfaces:
+  - { name: Gig1, desc: USER-LAN, vlan: 10, portfast: true }
+  - { name: Gig2, desc: VOICE-LAN, vlan: 20 }
 ```
 
-2. **Template**
+### Template
 
-`templates/vlan_template.j2`:
+`templates/interfaces.j2`:
 
 ```jinja
-{% for vlan in vlans %}
-interface vlan {{ vlan.id }}
- ip address {{ vlan.ip }} 255.255.255.0
- no shut
+{% for intf in interfaces %}
+interface {{ intf.name }}
+ description {{ intf.desc }}
+ switchport access vlan {{ intf.vlan }}
+{% if intf.portfast %}
+ spanning-tree portfast
+{% endif %}
 {% endfor %}
 ```
 
-3. **Playbook**
+### Playbook
 
-`create_cc_template.yml`:
+`interfaces.yml`:
 
 ```yaml
 ---
-- name: Create VLAN Template in Catalyst Center
-  hosts: localhost
-  collections:
-    - cisco.dnac
-  vars:
-    dnac_host: "10.10.20.5"
-    dnac_username: "admin"
-    dnac_password: "C1sco12345"
+- name: Configure Interfaces
+  hosts: all
+  gather_facts: no
   tasks:
-    - dnac_template_create:
-        dnac_host: "{{ dnac_host }}"
-        dnac_username: "{{ dnac_username }}"
-        dnac_password: "{{ dnac_password }}"
-        project_name: "Campus_VLANs"
-        template_name: "Dynamic_VLANs"
-        template_content: "{{ lookup('template', 'templates/vlan_template.j2') }}"
+    - ios_config:
+        src: templates/interfaces.j2
 ```
 
-4. **Run**
+### Run
 
 ```bash
-ansible-playbook -i inventory.yml create_cc_template.yml
+ansible-playbook -i inventory.yml interfaces.yml
 ```
-
-✅ Catalyst Center will have a new project & template built automatically.
 
 ---
 
-## 🧠 Review & Tips
+## Lab 4 — Test Dry Run (Check Mode)
 
-* Keep templates in a `templates/` folder.
-* Store device groups and variables in `group_vars/`.
-* Always test with `--check` and `--diff` first.
-* Use version control (GitHub, GitLab) for your Jinja2 files.
-* Combine loops and conditionals to make smart, reusable configs.
+Before pushing any config, check changes:
+
+```bash
+ansible-playbook -i inventory.yml interfaces.yml --check --diff
+```
+
+✅ Shows what will change but doesn’t touch the router.
+
+---
+
+### Tips
+
+* Only one router needed — adjust `ansible_host` if the IP changes.
+* Put sensitive passwords in **Ansible Vault** for security.
+* Use `--check` first to preview.
+* Keep templates under `templates/` and variables in `group_vars/`.
+
+---

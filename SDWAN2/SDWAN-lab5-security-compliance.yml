@@ -1,0 +1,463 @@
+---
+- name: SDWAN Lab 5 - Security and Compliance Reporting
+  hosts: localhost
+  gather_facts: no
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Authenticate with vManage
+      uri:
+        url: "{{ vmanage_url }}/j_security_check"
+        method: POST
+        body: "j_username={{ vmanage_username }}&j_password={{ vmanage_password }}"
+        validate_certs: false
+        headers:
+          Content-Type: "application/x-www-form-urlencoded"
+      register: login_response
+
+    - name: Set session cookie
+      set_fact:
+        vmanage_cookie: "{{ login_response.cookies_string }}"
+
+    - name: Get CSRF token
+      uri:
+        url: "{{ vmanage_url }}/dataservice/client/token"
+        method: GET
+        validate_certs: false
+        return_content: yes
+        headers:
+          Cookie: "{{ vmanage_cookie }}"
+      register: token_response
+
+    - name: Set CSRF token
+      set_fact:
+        csrf_token: "{{ token_response.content }}"
+
+    - name: Get certificate status and information
+      uri:
+        url: "{{ vmanage_url }}/dataservice/certificate/stats"
+        method: GET
+        validate_certs: false
+        headers:
+          Content-Type: "application/json"
+          Cookie: "{{ vmanage_cookie }}"
+          X-XSRF-TOKEN: "{{ csrf_token }}"
+      register: certificate_stats
+      ignore_errors: yes
+      
+    - name: Get device certificate details
+      uri:
+        url: "{{ vmanage_url }}/dataservice/certificate/device"
+        method: GET
+        validate_certs: false
+        headers:
+          Content-Type: "application/json"
+          Cookie: "{{ vmanage_cookie }}"
+          X-XSRF-TOKEN: "{{ csrf_token }}"
+      register: device_certificates
+      ignore_errors: yes
+      
+    - name: Get security policies
+      uri:
+        url: "{{ vmanage_url }}/dataservice/template/policy/security"
+        method: GET
+        validate_certs: false
+        headers:
+          Content-Type: "application/json"
+          Cookie: "{{ vmanage_cookie }}"
+          X-XSRF-TOKEN: "{{ csrf_token }}"
+      register: security_policies
+      ignore_errors: yes
+      
+    - name: Get firewall policies
+      uri:
+        url: "{{ vmanage_url }}/dataservice/template/policy/definition/acl"
+        method: GET
+        validate_certs: false
+        headers:
+          Content-Type: "application/json"
+          Cookie: "{{ vmanage_cookie }}"
+          X-XSRF-TOKEN: "{{ csrf_token }}"
+      register: firewall_policies
+      ignore_errors: yes
+      
+    - name: Get authentication events
+      uri:
+        url: "{{ vmanage_url }}/dataservice/device/security/events"
+        method: GET
+        validate_certs: false
+        headers:
+          Content-Type: "application/json"
+          Cookie: "{{ vmanage_cookie }}"
+          X-XSRF-TOKEN: "{{ csrf_token }}"
+      register: security_events
+      ignore_errors: yes
+      
+    - name: Get system audit logs
+      uri:
+        url: "{{ vmanage_url }}/dataservice/system/audit"
+        method: GET
+        validate_certs: false
+        headers:
+          Content-Type: "application/json"
+          Cookie: "{{ vmanage_cookie }}"
+          X-XSRF-TOKEN: "{{ csrf_token }}"
+      register: audit_logs
+      ignore_errors: yes
+      
+    - name: Get user sessions information
+      uri:
+        url: "{{ vmanage_url }}/dataservice/admin/user/sessions"
+        method: GET
+        validate_certs: false
+        headers:
+          Content-Type: "application/json"
+          Cookie: "{{ vmanage_cookie }}"
+          X-XSRF-TOKEN: "{{ csrf_token }}"
+      register: user_sessions
+      ignore_errors: yes
+      
+    - name: Analyze certificate health
+      set_fact:
+        total_certificates: "{{ device_certificates.json.data | default([]) | length }}"
+        valid_certificates: "{{ device_certificates.json.data | default([]) | selectattr('certificate-status', 'equalto', 'valid') | list | length }}"
+        expiring_soon: "{{ device_certificates.json.data | default([]) | selectattr('days-to-expiry', 'defined') | selectattr('days-to-expiry', 'lessthan', 90) | list }}"
+        expired_certificates: "{{ device_certificates.json.data | default([]) | selectattr('certificate-status', 'equalto', 'expired') | list }}"
+      when: device_certificates.json.data is defined
+      
+    - name: Display certificate security summary
+      debug:
+        msg: |
+          === CERTIFICATE SECURITY STATUS ===
+          Total Certificates: {{ total_certificates | default('N/A') }}
+          Valid Certificates: {{ valid_certificates | default('N/A') }}
+          Expiring Soon (<90 days): {{ expiring_soon | default([]) | length }}
+          Expired Certificates: {{ expired_certificates | default([]) | length }}
+          Certificate Health: {{ ((valid_certificates | default(0) | int * 100) / (total_certificates | default(1) | int)) | round(1) }}%
+          
+    - name: Show expiring certificates
+      debug:
+        msg: "ALERT: Certificate for {{ item['system-ip'] | default('Unknown') }} expires in {{ item['days-to-expiry'] | default('Unknown') }} days"
+      loop: "{{ expiring_soon | default([]) }}"
+      when: expiring_soon is defined and expiring_soon | length > 0
+      
+    - name: Show expired certificates
+      debug:
+        msg: "CRITICAL: Certificate for {{ item['system-ip'] | default('Unknown') }} has EXPIRED"
+      loop: "{{ expired_certificates | default([]) }}"
+      when: expired_certificates is defined and expired_certificates | length > 0
+      
+    - name: Analyze security policies
+      set_fact:
+        total_security_policies: "{{ security_policies.json.data | default([]) | length }}"
+        active_security_policies: "{{ security_policies.json.data | default([]) | selectattr('policyStatus', 'equalto', 'active') | list | length }}"
+        firewall_policy_count: "{{ firewall_policies.json.data | default([]) | length }}"
+      when: 
+        - security_policies.json.data is defined
+        - firewall_policies.json.data is defined
+        
+    - name: Display security policy summary
+      debug:
+        msg: |
+          === SECURITY POLICY STATUS ===
+          Total Security Policies: {{ total_security_policies | default('N/A') }}
+          Active Security Policies: {{ active_security_policies | default('N/A') }}
+          Firewall/ACL Policies: {{ firewall_policy_count | default('N/A') }}
+          Policy Coverage: {{ ((active_security_policies | default(0) | int * 100) / (total_security_policies | default(1) | int)) | round(1) }}%
+          
+    - name: Show security policy details
+      debug:
+        msg: "Policy: {{ item.policyName | default('Unnamed') }} - Type: {{ item.policyType | default('Unknown') }} - Status: {{ item.policyStatus | default('Unknown') }}"
+      loop: "{{ security_policies.json.data | default([]) [:5] }}"
+      when: security_policies.json.data is defined and security_policies.json.data | length > 0
+      
+    - name: Analyze authentication events
+      set_fact:
+        total_auth_events: "{{ security_events.json.data | default([]) | length }}"
+        successful_auths: "{{ security_events.json.data | default([]) | selectattr('event-type', 'equalto', 'auth-success') | list | length }}"
+        failed_auths: "{{ security_events.json.data | default([]) | selectattr('event-type', 'equalto', 'auth-failure') | list | length }}"
+      when: security_events.json.data is defined
+      
+    - name: Display authentication security summary
+      debug:
+        msg: |
+          === AUTHENTICATION SECURITY ===
+          Total Auth Events: {{ total_auth_events | default('N/A') }}
+          Successful Authentications: {{ successful_auths | default('N/A') }}
+          Failed Authentications: {{ failed_auths | default('N/A') }}
+          Auth Success Rate: {{ ((successful_auths | default(0) | int * 100) / (total_auth_events | default(1) | int)) | round(1) }}%
+      when: total_auth_events is defined
+      
+    - name: Show failed authentication attempts
+      debug:
+        msg: "Failed Auth: {{ item.username | default('Unknown user') }} from {{ item['source-ip'] | default('Unknown IP') }} at {{ item.timestamp | default('Unknown time') }}"
+      loop: "{{ security_events.json.data | default([]) | selectattr('event-type', 'equalto', 'auth-failure') | list [:5] }}"
+      when: 
+        - security_events.json.data is defined 
+        - failed_auths is defined 
+        - failed_auths | int > 0
+        
+    - name: Analyze audit log security
+      set_fact:
+        total_audit_events: "{{ audit_logs.json.data | default([]) | length }}"
+        admin_activities: "{{ audit_logs.json.data | default([]) | selectattr('activity-type', 'match', '.*admin.*') | list | length }}"
+        policy_changes: "{{ audit_logs.json.data | default([]) | selectattr('activity-type', 'match', '.*policy.*') | list | length }}"
+      when: audit_logs.json.data is defined
+      
+    - name: Display audit security summary
+      debug:
+        msg: |
+          === AUDIT AND COMPLIANCE ===
+          Total Audit Events: {{ total_audit_events | default('N/A') }}
+          Admin Activities: {{ admin_activities | default('N/A') }}
+          Policy Changes: {{ policy_changes | default('N/A') }}
+      when: total_audit_events is defined
+      
+    - name: Show recent admin activities
+      debug:
+        msg: "Admin Activity: {{ item.activity | default('Unknown') }} by {{ item.username | default('Unknown') }} at {{ item.timestamp | default('Unknown') }}"
+      loop: "{{ audit_logs.json.data | default([]) | selectattr('activity-type', 'match', '.*admin.*') | list [:3] }}"
+      when: 
+        - audit_logs.json.data is defined
+        - admin_activities is defined
+        - admin_activities | int > 0
+        
+    - name: Analyze current user sessions
+      set_fact:
+        active_sessions: "{{ user_sessions.json.data | default([]) | length }}"
+        admin_sessions: "{{ user_sessions.json.data | default([]) | selectattr('userGroup', 'equalto', 'netadmin') | list | length }}"
+      when: user_sessions.json.data is defined
+      
+    - name: Display session security summary
+      debug:
+        msg: |
+          === ACTIVE SESSION SECURITY ===
+          Active User Sessions: {{ active_sessions | default('N/A') }}
+          Admin Sessions: {{ admin_sessions | default('N/A') }}
+      when: active_sessions is defined
+      
+    - name: Calculate overall security score
+      set_fact:
+        certificate_score: "{{ ((valid_certificates | default(0) | int * 100) / (total_certificates | default(1) | int)) | round(1) }}"
+        policy_score: "{{ ((active_security_policies | default(0) | int * 100) / (total_security_policies | default(1) | int)) | round(1) }}"
+        auth_score: "{{ ((successful_auths | default(1) | int * 100) / (total_auth_events | default(1) | int)) | round(1) }}"
+        overall_security_score: "{{ ((certificate_score | float + policy_score | float + auth_score | float) / 3) | round(1) }}"
+      when:
+        - valid_certificates is defined
+        - active_security_policies is defined
+        - successful_auths is defined
+        
+    - name: Display comprehensive security summary
+      debug:
+        msg: |
+          ====================================
+          CATALYST WAN SECURITY & COMPLIANCE SUMMARY
+          ====================================
+          Overall Security Score: {{ overall_security_score | default('N/A') }}%
+          
+          Certificate Security: {{ certificate_score | default('N/A') }}%
+          - Valid: {{ valid_certificates | default('N/A') }}/{{ total_certificates | default('N/A') }}
+          - Expiring Soon: {{ expiring_soon | default([]) | length }}
+          - Expired: {{ expired_certificates | default([]) | length }}
+          
+          Policy Security: {{ policy_score | default('N/A') }}%
+          - Active Policies: {{ active_security_policies | default('N/A') }}/{{ total_security_policies | default('N/A') }}
+          - Firewall Rules: {{ firewall_policy_count | default('N/A') }}
+          
+          Authentication Security: {{ auth_score | default('N/A') }}%
+          - Success Rate: {{ ((successful_auths | default(0) | int * 100) / (total_auth_events | default(1) | int)) | round(1) }}%
+          - Failed Attempts: {{ failed_auths | default('N/A') }}
+          
+          Compliance Status: {{ 'COMPLIANT' if (overall_security_score | default(0) | float) > 90 else 'ATTENTION NEEDED' if (overall_security_score | default(0) | float) > 75 else 'NON-COMPLIANT' }}
+          
+    - name: Identify security risks
+      set_fact:
+        security_risks: []
+      
+    - name: Add certificate risks
+      set_fact:
+        security_risks: "{{ security_risks + ['Certificate expiring soon: ' + expiring_soon | length | string + ' certificates'] }}"
+      when: expiring_soon is defined and expiring_soon | length > 0
+      
+    - name: Add expired certificate risks
+      set_fact:
+        security_risks: "{{ security_risks + ['CRITICAL: Expired certificates: ' + expired_certificates | length | string] }}"
+      when: expired_certificates is defined and expired_certificates | length > 0
+      
+    - name: Add authentication risks
+      set_fact:
+        security_risks: "{{ security_risks + ['High authentication failures: ' + failed_auths | string + ' failed attempts'] }}"
+      when: failed_auths is defined and failed_auths | int > 10
+      
+    - name: Add policy risks
+      set_fact:
+        security_risks: "{{ security_risks + ['Inactive security policies detected'] }}"
+      when: 
+        - total_security_policies is defined
+        - active_security_policies is defined
+        - active_security_policies | int < total_security_policies | int
+        
+    - name: Display security risks
+      debug:
+        msg: "SECURITY RISK: {{ item }}"
+      loop: "{{ security_risks }}"
+      when: security_risrisks is defined and security_risks | length > 0
+      
+    - name: Create comprehensive security compliance report
+      copy:
+        content: |
+          Catalyst WAN Security and Compliance Audit Report
+          Generated: {{ ansible_date_time.iso8601 | default('Unknown time') }}
+          vManage: {{ vmanage_url }}
+          
+          ====================================
+          EXECUTIVE SECURITY SUMMARY
+          ====================================
+          Overall Security Score: {{ overall_security_score | default('N/A') }}%
+          Compliance Status: {{ 'COMPLIANT' if (overall_security_score | default(0) | float) > 90 else 'ATTENTION NEEDED' if (overall_security_score | default(0) | float) > 75 else 'NON-COMPLIANT' }}
+          Risk Level: {{ 'LOW' if (security_risks | default([]) | length) == 0 else 'MEDIUM' if (security_risks | default([]) | length) < 3 else 'HIGH' }}
+          
+          ====================================
+          CERTIFICATE SECURITY ANALYSIS
+          ====================================
+          Certificate Health Score: {{ certificate_score | default('N/A') }}%
+          
+          Certificate Statistics:
+          - Total Certificates: {{ total_certificates | default('N/A') }}
+          - Valid Certificates: {{ valid_certificates | default('N/A') }}
+          - Expiring Soon (<90 days): {{ expiring_soon | default([]) | length }}
+          - Expired Certificates: {{ expired_certificates | default([]) | length }}
+          
+          {% if expiring_soon is defined and expiring_soon | length > 0 %}
+          Certificates Expiring Soon:
+          {% for cert in expiring_soon %}
+          - Device {{ cert['system-ip'] | default('Unknown') }}: {{ cert['days-to-expiry'] | default('Unknown') }} days remaining
+          {% endfor %}
+          {% endif %}
+          
+          {% if expired_certificates is defined and expired_certificates | length > 0 %}
+          CRITICAL - Expired Certificates:
+          {% for cert in expired_certificates %}
+          - Device {{ cert['system-ip'] | default('Unknown') }}: EXPIRED
+          {% endfor %}
+          {% endif %}
+          
+          ====================================
+          SECURITY POLICY ANALYSIS
+          ====================================
+          Policy Health Score: {{ policy_score | default('N/A') }}%
+          
+          Policy Statistics:
+          - Total Security Policies: {{ total_security_policies | default('N/A') }}
+          - Active Security Policies: {{ active_security_policies | default('N/A') }}
+          - Firewall/ACL Policies: {{ firewall_policy_count | default('N/A') }}
+          - Policy Coverage: {{ ((active_security_policies | default(0) | int * 100) / (total_security_policies | default(1) | int)) | round(1) }}%
+          
+          {% if security_policies.json.data is defined and security_policies.json.data | length > 0 %}
+          Security Policy Details:
+          {% for policy in security_policies.json.data[:10] %}
+          - {{ policy.policyName | default('Unnamed') }}: {{ policy.policyStatus | default('Unknown') }}
+          {% endfor %}
+          {% endif %}
+          
+          ====================================
+          AUTHENTICATION SECURITY ANALYSIS
+          ====================================
+          Authentication Health Score: {{ auth_score | default('N/A') }}%
+          
+          Authentication Statistics:
+          - Total Auth Events: {{ total_auth_events | default('N/A') }}
+          - Successful Authentications: {{ successful_auths | default('N/A') }}
+          - Failed Authentications: {{ failed_auths | default('N/A') }}
+          - Success Rate: {{ ((successful_auths | default(0) | int * 100) / (total_auth_events | default(1) | int)) | round(1) }}%
+          
+          {% if failed_auths is defined and failed_auths | int > 0 %}
+          Recent Authentication Failures:
+          {% for event in security_events.json.data | default([]) | selectattr('event-type', 'equalto', 'auth-failure') | list [:5] %}
+          - {{ event.username | default('Unknown') }} from {{ event['source-ip'] | default('Unknown') }}
+          {% endfor %}
+          {% endif %}
+          
+          ====================================
+          AUDIT AND COMPLIANCE TRACKING
+          ====================================
+          Audit Activity Summary:
+          - Total Audit Events: {{ total_audit_events | default('N/A') }}
+          - Administrative Activities: {{ admin_activities | default('N/A') }}
+          - Policy Changes: {{ policy_changes | default('N/A') }}
+          - Active User Sessions: {{ active_sessions | default('N/A') }}
+          
+          {% if security_risks is defined and security_risks | length > 0 %}
+          ====================================
+          IDENTIFIED SECURITY RISKS
+          ====================================
+          {% for risk in security_risks %}
+          - {{ risk }}
+          {% endfor %}
+          {% endif %}
+          
+          ====================================
+          SECURITY RECOMMENDATIONS
+          ====================================
+          {% if overall_security_score | default(100) | float < 90 %}
+          PRIORITY ACTIONS:
+          {% if expired_certificates is defined and expired_certificates | length > 0 %}
+          - CRITICAL: Renew {{ expired_certificates | length }} expired certificates immediately
+          {% endif %}
+          {% if expiring_soon is defined and expiring_soon | length > 0 %}
+          - Plan certificate renewal for {{ expiring_soon | length }} certificates expiring soon
+          {% endif %}
+          {% if failed_auths is defined and failed_auths | int > 10 %}
+          - Investigate {{ failed_auths }} authentication failures for security threats
+          {% endif %}
+          {% if active_security_policies | default(0) | int < total_security_policies | default(1) | int %}
+          - Activate inactive security policies or remove unused policies
+          {% endif %}
+          {% endif %}
+          
+          ONGOING SECURITY PRACTICES:
+          - Regular certificate lifecycle monitoring and renewal
+          - Implement automated security policy compliance checking
+          - Monitor authentication patterns for anomalies
+          - Regular security audit log reviews
+          - Maintain principle of least privilege access
+          - Implement multi-factor authentication where possible
+          
+          {% if overall_security_score | default(0) | float > 90 %}
+          GOOD SECURITY POSTURE:
+          - Current security configuration meets compliance standards
+          - Continue regular monitoring and maintenance
+          - Consider advanced threat protection enhancements
+          {% endif %}
+          
+        dest: "./SDWAN-security-compliance-{{ ansible_date_time.epoch | default('timestamp') }}.txt"
+      delegate_to: localhost
+      
+    - name: Display report location
+      debug:
+        msg: |
+          ====================================
+          🎉 SDWAN LAB SERIES COMPLETED! 🎉
+          ====================================
+          
+          Security compliance report saved to:
+          ./SDWAN-security-compliance-{{ ansible_date_time.epoch | default('timestamp') }}.txt
+          
+          You have successfully completed all 5 Catalyst WAN labs:
+          ✓ Lab 1: Basic Catalyst WAN Connectivity and Device Discovery
+          ✓ Lab 2: Catalyst WAN Fabric Status and Health Monitoring  
+          ✓ Lab 3: Policy and Template Analysis
+          ✓ Lab 4: Network Performance and Statistics Monitoring
+          ✓ Lab 5: Security and Compliance Reporting
+          
+          Final Security Score: {{ overall_security_score | default('N/A') }}%
+          
+          You now have comprehensive experience with:
+          - Catalyst WAN REST API automation using Ansible
+          - Network fabric health monitoring and analysis
+          - Policy and template management workflows
+          - Performance monitoring and optimization
+          - Security compliance auditing and reporting
+          
+          Excellent work on mastering Catalyst WAN automation! 🚀

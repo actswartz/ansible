@@ -1,0 +1,19 @@
+---
+- name: Test session creation
+  hosts: localhost
+  gather_facts: no
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Establish session with vManage
+      cisco.catalystwan.server_info:
+        manager_credentials:
+          url: "{{ vmanage_url }}"
+          username: "{{ vmanage_username }}"
+          password: "{{ vmanage_password }}"
+      register: server_info_result
+      
+    - name: Display server info result
+      debug:
+        var: server_info_result

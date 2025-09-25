@@ -59,9 +59,9 @@ all:
 
 ```yaml
 hostname: R2-Ansible
-vlans:
-  - { id: 10, name: USERS }
-  - { id: 20, name: VOICE }
+users:
+  - { name: admin1, password: password123, role: network-admin }
+  - { name: user1, password: password456, role: network-operator }
 interfaces:
   - { name: Ethernet0/0, desc: WAN-Interface, ip_address: 192.168.1.1 255.255.255.0 }
   - { name: Ethernet0/1, desc: LAN-Interface, ip_address: 10.10.10.1 255.255.255.0 }
@@ -106,45 +106,51 @@ hostname {{ hostname }}
 ### Run
 
 ```bash
-ansible-playbook -i inventory.yml hostname.yml
+./lab1.sh
 ```
 
 ---
 
-## Lab 2 — VLAN Creation
+## Lab 2 — User Creation
 
-Now we’ll define VLANs as data and generate config from that list.
+Now we’ll define users as data and generate config from that list.
 
 ### Template
 
-`templates/vlans.j2`:
+`templates/users.j2`:
 
 ```jinja
-{% for vlan in vlans %}
-vlan {{ vlan.id }}
- name {{ vlan.name }}
+{% for user in users %}
+username {{ user.name }} privilege 15 secret {{ user.password }}
 {% endfor %}
 ```
 
 ### Playbook
 
-`vlans.yml`:
+`users.yml`:
 
 ```yaml
 ---
-- name: Create VLANs
+- name: Create Users
   hosts: all
   gather_facts: no
   connection: ansible.netcommon.network_cli
+  become: yes
+  become_method: enable
   tasks:
-    - ios_config:
-        src: templates/vlans.j2
+    - name: Display rendered user configuration
+      debug:
+        msg: "{{ lookup('template', 'templates/users.j2').split('\n') }}"
+
+    - name: Create users
+      ios_config:
+        src: templates/users.j2
 ```
 
 ### Run
 
 ```bash
-ansible-playbook -i inventory.yml vlans.yml
+./lab2.sh
 ```
 
 ---
@@ -189,7 +195,7 @@ interface {{ intf.name }}
 ### Run
 
 ```bash
-ansible-playbook -i inventory.yml interfaces.yml
+./lab3.sh
 ```
 
 ---
@@ -199,7 +205,7 @@ ansible-playbook -i inventory.yml interfaces.yml
 Before making changes, see what would happen.
 
 ```bash
-ansible-playbook -i inventory.yml interfaces.yml --check --diff
+./lab4.sh
 ```
 
 ---
@@ -209,3 +215,4 @@ ansible-playbook -i inventory.yml interfaces.yml --check --diff
 * Only one router needed — adjust `ansible_host` if the IP changes.
 * Use **Ansible Vault** to encrypt real passwords.
 * `--check` + `--diff` is safest before production changes.
+* Keep templates and variables organized for reuse.

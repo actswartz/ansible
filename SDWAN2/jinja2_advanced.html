@@ -1,0 +1,85 @@
+Ansible Basics: A Quick Cheat SheetThis document provides a quick reference for the fundamental concepts and commands for Ansible, the open-source automation tool. Ansible uses Jinja2 for its templating engine, making it a powerful next step for anyone familiar with Jinja2.1. Core ConceptsControl Node: The machine where Ansible is installed and from which you run your commands and playbooks.Managed Node (or Target): The server or network device that Ansible manages.Inventory: A file (usually in INI or YAML format) that lists the managed nodes. You can group hosts for easier targeting.Playbook: A YAML file that contains a list of "plays" or tasks to be executed on managed nodes. This is the core of Ansible's configuration, deployment, and orchestration language.Task: A single action to be executed, like installing a package or starting a service. Each task calls an Ansible Module.Module: A reusable unit of code that Ansible executes. For example, there are modules for managing packages (apt, yum), services (service), files (copy, template), and much more.Role: A predefined way of organizing playbooks and other files to facilitate reuse and sharing.Handler: A special kind of task that only runs when "notified" by another task. Typically used for actions like restarting a service after a configuration change.2. The Inventory FileThe inventory file is your list of managed servers.Example inventory.ini (INI format):[webservers]
+web1.example.com
+web2.example.com ansible_user=ubuntu
+
+[databases]
+db1.example.com
+db2.example.com
+
+[datacenter:children]
+webservers
+databases
+Example inventory.yml (YAML format):all:
+  children:
+    webservers:
+      hosts:
+        web1.example.com:
+        web2.example.com:
+          ansible_user: ubuntu
+    databases:
+      hosts:
+        db1.example.com:
+        db2.example.com:
+3. The PlaybookPlaybooks are where you define the desired state of your systems.Example deploy_apache.yml:---
+- name: Install and configure Apache web server
+  hosts: webservers
+  become: yes  # Execute tasks with root privileges (sudo)
+
+  vars:
+    server_admin_email: "admin@example.com"
+
+  tasks:
+    - name: Install Apache
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes
+
+    - name: Ensure Apache is running and enabled on boot
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+    - name: Deploy custom index.html from a template
+      template:
+        src: templates/index.html.j2  # This is a Jinja2 template!
+        dest: /var/www/html/index.html
+      notify:
+        - Restart Apache
+
+  handlers:
+    - name: Restart Apache
+      service:
+        name: apache2
+        state: restarted
+4. Common CommandsPing all hosts to check connectivity:ansible all -i inventory.ini -m ping
+Run a playbook:ansible-playbook -i inventory.ini deploy_apache.yml
+Run a playbook and check for changes without executing (dry run):ansible-playbook -i inventory.ini deploy_apache.yml --check
+Run an ad-hoc command (e.g., check disk space on all webservers):ansible webservers -i inventory.ini -a "df -h"
+Manage encrypted secrets with Ansible Vault:# Create an encrypted file
+ansible-vault create secrets.yml
+
+# Edit an existing encrypted file
+ansible-vault edit secrets.yml
+
+# Run a playbook using a vaulted file
+ansible-playbook -i inventory.ini my_playbook.yml --ask-vault-pass
+5. Using Jinja2 in AnsibleAnsible's template module is where Jinja2 shines. You can create template files for configurations that need variables.Example templates/index.html.j2:<!DOCTYPE html>
+<html>
+<head>
+    <title>Welcome!</title>
+</head>
+<body>
+    <h1>This server is managed by Ansible.</h1>
+    <p>
+        The server hostname is: {% raw %}{{ ansible_hostname }}{% endraw %}.<br>
+        The server has {% raw %}{{ ansible_processor_vcpus }}{% endraw %} CPU cores.
+    </p>
+    <p>
+        This site's administrator is {% raw %}{{ server_admin_email }}{% endraw %}.
+        {# This variable comes from the 'vars' section in the playbook #}
+    </p>
+</body>
+</html>
+When the playbook runs, Ansible will process this .j2 file, substitute the variables (like the built-in ansible_hostname and the custom server_admin_email), and place the resulting index.html on the target servers.

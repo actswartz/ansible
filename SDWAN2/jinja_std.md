@@ -49,7 +49,7 @@ all:
     ansible_become: yes
     ansible_become_method: enable
     ansible_become_password: cisco
-    ansible_command_timeout: 60
+    ansible_command_timeout: 160
 ```
 
 * `csr1` is the name we’ll use to refer to the router.

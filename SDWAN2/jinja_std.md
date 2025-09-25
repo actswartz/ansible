@@ -1,4 +1,4 @@
-# 🧪 Lab Book — Jinja2 Templates with One CSR1000v Router
+# 🧪 Lab Book — Jinja2 Templates with One CSR1000v Router (Updated)
 
 ## Lab 0 — Goal & Setup
 
@@ -41,15 +41,22 @@ Inventory tells Ansible what devices to connect to and how.
 all:
   hosts:
     csr1:
-      ansible_host: 10.10.20.21X
+      ansible_host: 10.10.20.211
   vars:
     ansible_user: cisco
     ansible_password: cisco
     ansible_network_os: ios
+    ansible_become: yes
+    ansible_become_method: enable
+    ansible_become_password: cisco
+    ansible_command_timeout: 60
 ```
 
 * `csr1` is the name we’ll use to refer to the router.
 * `ansible_network_os: ios` tells Ansible to use Cisco IOS modules.
+* `ansible_become: yes` and `ansible_become_method: enable` are used to enter privileged (enable) mode.
+* `ansible_become_password: cisco` provides the password for enable mode.
+* `ansible_command_timeout: 60` increases the time Ansible will wait for a command to complete.
 
 ---
 
@@ -80,11 +87,13 @@ Authorized users only!
 - name: Deploy Banner
   hosts: all
   gather_facts: no
+  connection: ansible.netcommon.network_cli
   tasks:
     - ios_config:
         src: templates/banner.j2
 ```
 
+* `connection: ansible.netcommon.network_cli` tells Ansible to use the correct connection method for network devices.
 * `ios_config` is the module that sends config lines to an IOS device.
 * `src` points to the Jinja2 template file.
 
@@ -92,18 +101,6 @@ Authorized users only!
 
 ```bash
 ansible-playbook -i inventory.yml banner.yml
-```
-
-**What happens:** Ansible connects to the router, renders the banner with the hostname, and pushes it.
-
-**Expected Output:**
-
-```
-PLAY [Deploy Banner] ******************************************************************
-TASK [Push banner using template] ****************************************************
-changed: [csr1]
-PLAY RECAP ***************************************************************************
-csr1 : ok=1 changed=1 unreachable=0 failed=0 skipped=0 rescued=0 ignored=0
 ```
 
 ---
@@ -147,6 +144,7 @@ vlan {{ vlan.id }}
 - name: Create VLANs
   hosts: all
   gather_facts: no
+  connection: ansible.netcommon.network_cli
   tasks:
     - ios_config:
         src: templates/vlans.j2
@@ -156,19 +154,6 @@ vlan {{ vlan.id }}
 
 ```bash
 ansible-playbook -i inventory.yml vlans.yml
-```
-
-**What happens:** Template is filled with VLAN info and pushed to the router.
-
-**Expected Output:**
-
-```
-PLAY [Create VLANs] *******************************************************************
-TASK [ios_config] *********************************************************************
-changed: [csr1] => (item={u'id': 10, u'name': u'USERS'})
-changed: [csr1] => (item={u'id': 20, u'name': u'VOICE'})
-PLAY RECAP ***************************************************************************
-csr1 : ok=1 changed=1 unreachable=0 failed=0
 ```
 
 ---
@@ -213,6 +198,7 @@ interface {{ intf.name }}
 - name: Configure Interfaces
   hosts: all
   gather_facts: no
+  connection: ansible.netcommon.network_cli
   tasks:
     - ios_config:
         src: templates/interfaces.j2
@@ -224,19 +210,6 @@ interface {{ intf.name }}
 ansible-playbook -i inventory.yml interfaces.yml
 ```
 
-**What happens:** Each interface gets rendered and pushed. Portfast appears only on those flagged true.
-
-**Expected Output:**
-
-```
-PLAY [Configure Interfaces] ***********************************************************
-TASK [ios_config] *********************************************************************
-changed: [csr1] => (item={'name': 'Gig1', 'desc': 'USER-LAN', 'vlan': 10, 'portfast': True})
-changed: [csr1] => (item={'name': 'Gig2', 'desc': 'VOICE-LAN', 'vlan': 20})
-PLAY RECAP ***************************************************************************
-csr1 : ok=1 changed=1 unreachable=0 failed=0
-```
-
 ---
 
 ## Lab 4 — Test Dry Run (Check Mode)
@@ -246,21 +219,6 @@ Before making changes, see what would happen.
 ```bash
 ansible-playbook -i inventory.yml interfaces.yml --check --diff
 ```
-
-**What happens:** Ansible logs what would change but doesn’t configure the router.
-
-**Expected Output:**
-
-```
-PLAY [Configure Interfaces] ***********************************************************
-TASK [ios_config] *********************************************************************
-changed: [csr1] => (item={'name': 'Gig1', 'desc': 'USER-LAN', 'vlan': 10, 'portfast': True})
-changed: [csr1] => (item={'name': 'Gig2', 'desc': 'VOICE-LAN', 'vlan': 20})
-PLAY RECAP ***************************************************************************
-csr1 : ok=0 changed=2 unreachable=0 failed=0
-```
-
-✅ “changed” shows what would be applied, but the router stays untouched.
 
 ---
 

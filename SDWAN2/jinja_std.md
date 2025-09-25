@@ -1,4 +1,3 @@
-Here’s a **student-friendly, hands-on lab book** you can give learners to master **Jinja2 templating** in Ansible.
 
 ---
 

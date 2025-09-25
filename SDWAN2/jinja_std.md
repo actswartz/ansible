@@ -71,10 +71,10 @@ We’ll start with a very simple Jinja2 template that inserts the device hostnam
 
 ```jinja
 !
-banner motd ^
+banner motd Q
 Welcome to {{ inventory_hostname }}
 Authorized users only!
-^
+Q
 ```
 
 * `{{ inventory_hostname }}` gets replaced with the name defined in inventory (`csr1`).
@@ -89,8 +89,15 @@ Authorized users only!
   hosts: all
   gather_facts: no
   connection: ansible.netcommon.network_cli
+  become: yes
+  become_method: enable
   tasks:
-    - ios_config:
+    - name: Display rendered banner
+      debug:
+        msg: "{{ lookup('template', 'templates/banner.j2').split('\n') }}"
+
+    - name: Deploy Banner
+      ios_config:
         src: templates/banner.j2
 ```
 
@@ -226,8 +233,59 @@ ansible-playbook -i inventory.yml interfaces.yml --check --diff
 
 ---
 
+## Lab 5 - Configure Hostname
+
+This lab demonstrates how to set the device hostname.
+
+### Variables
+
+`group_vars/all.yml`:
+
+```yaml
+hostname: R2-Ansible
+```
+
+### Template
+
+`templates/hostname.j2`:
+
+```jinja
+hostname {{ hostname }}
+```
+
+### Playbook
+
+`hostname.yml`:
+
+```yaml
+---
+- name: Configure Hostname
+  hosts: all
+  gather_facts: no
+  connection: ansible.netcommon.network_cli
+  become: yes
+  become_method: enable
+  tasks:
+    - name: Display rendered hostname config
+      debug:
+        msg: "{{ lookup('template', 'templates/hostname.j2').split('\n') }}"
+
+    - name: Set hostname
+      ios_config:
+        src: templates/hostname.j2
+```
+
+### Run
+
+```bash
+ansible-playbook -i inventory.yml hostname.yml
+```
+
+---
+
 ### Tips
 
 * Only one router needed — adjust `ansible_host` if the IP changes.
 * Use **Ansible Vault** to encrypt real passwords.
 * `--check` + `--diff` is safest before production changes.
+* Keep templates and variables organized for reuse.

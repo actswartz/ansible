@@ -1,3 +1,4 @@
+
 # 🧪 Lab Book — Jinja2 Templates with One CSR1000v Router (Updated)
 
 ## Lab 0 — Goal & Setup
@@ -49,7 +50,7 @@ all:
     ansible_become: yes
     ansible_become_method: enable
     ansible_become_password: cisco
-    ansible_command_timeout: 160
+    ansible_command_timeout: 60
 ```
 
 * `csr1` is the name we’ll use to refer to the router.
@@ -158,9 +159,9 @@ ansible-playbook -i inventory.yml vlans.yml
 
 ---
 
-## Lab 3 — Interfaces with Loops & Conditionals
+## Lab 3 — Interface IP Addressing
 
-We’ll create interface configs and use an `if` statement to optionally enable portfast.
+We’ll create interface configs with a description and an IP address.
 
 ### Variables
 
@@ -168,8 +169,8 @@ We’ll create interface configs and use an `if` statement to optionally enable 
 
 ```yaml
 interfaces:
-  - { name: Gig1, desc: USER-LAN, vlan: 10, portfast: true }
-  - { name: Gig2, desc: VOICE-LAN, vlan: 20 }
+  - { name: Ethernet0/0, desc: WAN-Interface, ip_address: 192.168.1.1 255.255.255.0 }
+  - { name: Ethernet0/1, desc: LAN-Interface, ip_address: 10.10.10.1 255.255.255.0 }
 ```
 
 ### Template
@@ -180,14 +181,10 @@ interfaces:
 {% for intf in interfaces %}
 interface {{ intf.name }}
  description {{ intf.desc }}
- switchport access vlan {{ intf.vlan }}
-{% if intf.portfast %}
- spanning-tree portfast
-{% endif %}
+ ip address {{ intf.ip_address }}
+ no shutdown
 {% endfor %}
 ```
-
-* The `if` block only adds the portfast line when the variable is true.
 
 ### Playbook
 
@@ -200,9 +197,16 @@ interface {{ intf.name }}
   gather_facts: no
   connection: ansible.netcommon.network_cli
   tasks:
-    - ios_config:
+    - name: Display rendered configuration
+      debug:
+        msg: "{{ lookup('template', 'templates/interfaces.j2').split('\n') }}"
+
+    - name: Configure interfaces
+      ios_config:
         src: templates/interfaces.j2
 ```
+
+* The `debug` task will print the rendered configuration to the screen before applying it.
 
 ### Run
 
@@ -227,4 +231,3 @@ ansible-playbook -i inventory.yml interfaces.yml --check --diff
 * Only one router needed — adjust `ansible_host` if the IP changes.
 * Use **Ansible Vault** to encrypt real passwords.
 * `--check` + `--diff` is safest before production changes.
-* Keep templates and variables organized for reuse.

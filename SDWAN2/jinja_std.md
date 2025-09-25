@@ -1,6 +1,4 @@
-Here’s a **student-friendly, hands-on lab book** you can give learners to master **Jinja2 templating** in Ansible.
 
----
 
 # 🧪 Lab Book — Jinja2 Templates for Ansible
 
@@ -213,5 +211,3 @@ interface vlan {{ vlan.id }}
 * Create one master playbook to deploy banners, VLANs, and interfaces.
 
 ---
-
-Would you like me to export this **lab book** as a nicely formatted **PDF** or **Markdown file** so you can hand it out to students directly?

@@ -213,4 +213,3 @@ interface vlan {{ vlan.id }}
 
 ---
 
-Would you like me to export this **lab book** as a nicely formatted **PDF** or **Markdown file** so you can hand it out to students directly?

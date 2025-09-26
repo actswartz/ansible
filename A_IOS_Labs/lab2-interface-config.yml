@@ -1,0 +1,80 @@
+---
+- name: Lab 2 - Interface Configuration
+  hosts: csr
+  connection: network_cli
+  gather_facts: no
+  
+  vars:
+    ansible_network_os: ios
+    
+  tasks:
+    - name: Display current interface status
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+      register: interface_status
+      
+    - name: Show current interface status
+      debug:
+        var: interface_status.stdout_lines
+        
+    - name: Configure GigabitEthernet2 interface
+      cisco.ios.ios_config:
+        parents: interface GigabitEthernet2
+        lines:
+          - ip address 192.168.10.1 255.255.255.0
+          - description Lab2-Interface
+          - no shutdown
+      register: ge2_config
+      
+    - name: Configure GigabitEthernet3 interface  
+      cisco.ios.ios_config:
+        parents: interface GigabitEthernet3
+        lines:
+          - ip address 192.168.20.1 255.255.255.0
+          - description Lab2-Secondary
+          - no shutdown
+      register: ge3_config
+      
+    - name: Display configuration changes for GE2
+      debug:
+        msg: "GigabitEthernet2 configuration: {{ ge2_config.commands | default(['No changes']) | join(', ') }}"
+        
+    - name: Display configuration changes for GE3
+      debug:
+        msg: "GigabitEthernet3 configuration: {{ ge3_config.commands | default(['No changes']) | join(', ') }}"
+        
+    - name: Wait for interfaces to come up
+      pause:
+        seconds: 5
+        
+    - name: Verify interface configuration
+      cisco.ios.ios_command:
+        commands:
+          - show running-config interface GigabitEthernet2
+          - show running-config interface GigabitEthernet3
+          - show ip interface brief
+      register: verification
+      
+    - name: Show GigabitEthernet2 configuration
+      debug:
+        msg: "{{ verification.stdout[0].split('\n') }}"
+        
+    - name: Show GigabitEthernet3 configuration
+      debug:
+        msg: "{{ verification.stdout[1].split('\n') }}"
+        
+    - name: Show updated interface status
+      debug:
+        msg: "{{ verification.stdout[2].split('\n') }}"
+        
+    - name: Verify IP connectivity (ping test)
+      cisco.ios.ios_ping:
+        dest: 192.168.10.1
+        source: GigabitEthernet2
+      register: ping_result
+      ignore_errors: yes
+      
+    - name: Display ping results
+      debug:
+        msg: "Ping to 192.168.10.1 from GE2: {{ 'SUCCESS' if (ping_result.packet_loss is defined and ping_result.packet_loss == '0') else 'FAILED' }}"

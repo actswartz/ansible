@@ -1,0 +1,83 @@
+---
+- name: Lab 3 - OSPF Routing Setup
+  hosts: csr
+  connection: network_cli
+  gather_facts: no
+  
+  vars:
+    ansible_network_os: ios
+    
+  tasks:
+    - name: Display current routing table
+      cisco.ios.ios_command:
+        commands:
+          - show ip route
+      register: current_routes
+      
+    - name: Show current routing table
+      debug:
+        var: current_routes.stdout_lines
+        
+    - name: Configure OSPF process and router ID
+      cisco.ios.ios_config:
+        parents: router ospf 1
+        lines:
+          - router-id 1.1.1.1
+      register: ospf_process
+      
+    - name: Add OSPF network statements
+      cisco.ios.ios_config:
+        parents: router ospf 1
+        lines:
+          - network 192.168.10.0 0.0.0.255 area 0
+          - network 192.168.20.0 0.0.0.255 area 0
+      register: ospf_networks
+      
+    - name: Display OSPF process configuration changes
+      debug:
+        msg: "OSPF Process configuration: {{ ospf_process.commands | default(['No changes']) | join(', ') }}"
+        
+    - name: Display OSPF network configuration changes
+      debug:
+        msg: "OSPF Network configuration: {{ ospf_networks.commands | default(['No changes']) | join(', ') }}"
+        
+    - name: Wait for OSPF to initialize
+      pause:
+        seconds: 10
+        
+    - name: Verify OSPF configuration
+      cisco.ios.ios_command:
+        commands:
+          - show ip ospf
+          - show ip ospf interface
+          - show ip ospf neighbor
+          - show ip route ospf
+      register: ospf_verification
+      
+    - name: Show OSPF process information
+      debug:
+        msg: "{{ ospf_verification.stdout[0].split('\n') }}"
+        
+    - name: Show OSPF interfaces
+      debug:
+        msg: "{{ ospf_verification.stdout[1].split('\n') }}"
+        
+    - name: Show OSPF neighbors
+      debug:
+        msg: "{{ ospf_verification.stdout[2].split('\n') }}"
+        
+    - name: Show OSPF routes
+      debug:
+        msg: "{{ ospf_verification.stdout[3].split('\n') }}"
+        
+    - name: Configure OSPF interface parameters on GE2
+      cisco.ios.ios_config:
+        parents: interface GigabitEthernet2
+        lines:
+          - ip ospf hello-interval 10
+          - ip ospf dead-interval 40
+      register: ospf_interface_config
+      
+    - name: Display OSPF interface configuration changes
+      debug:
+        msg: "OSPF Interface configuration: {{ ospf_interface_config.commands | default(['No changes']) | join(', ') }}"

@@ -1,0 +1,37 @@
+---
+# Simple playbook to show interface status on CSR1000V
+# Just shows basic interface information without complex parsing
+
+- name: Get Basic Interface Status (Easy Version)
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+
+  tasks:
+    # Get interface status
+    - name: Get interface status
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+      register: interface_status
+
+    # Show interface status
+    - name: Show interface status
+      debug:
+        msg: |
+          Interface Status:
+          {{ interface_status.stdout[0] }}
+
+    # Get interface details
+    - name: Get interface details
+      cisco.ios.ios_command:
+        commands:
+          - show interfaces | include line protocol|MTU
+      register: interface_details
+
+    # Show interface details
+    - name: Show interface details
+      debug:
+        msg: |
+          Interface Details:
+          {{ interface_details.stdout[0] }}

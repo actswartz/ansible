@@ -1,0 +1,22 @@
+---
+- name: Filter vManage Devices
+  hosts: vmanage1
+  gather_facts: no
+  connection: httpapi
+  vars:
+    ansible_httpapi_validate_certs: false
+    ansible_httpapi_use_ssl: true
+
+  tasks:
+    - name: Get all devices
+      cisco.catalystwan.devices_info:
+        manager_credentials:
+          url: "https://10.10.20.90:8443"
+          username: "admin"
+          password: "C1sco12345"
+      register: all_devices
+
+    - name: Display vManage devices
+      debug:
+        var: item
+      loop: "{{ all_devices.devices | json_query('[?personality==`vmanage`]') }}"

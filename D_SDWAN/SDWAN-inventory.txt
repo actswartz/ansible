@@ -1,0 +1,2 @@
+[vmanage]
+vmanage1 ansible_host=10.10.20.90 ansible_user=admin ansible_password=C1sco12345 ansible_connection=httpapi ansible_httpapi_validate_certs=false ansible_httpapi_use_ssl=true

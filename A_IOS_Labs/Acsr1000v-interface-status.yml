@@ -1,0 +1,49 @@
+---
+- name: Get CSR1000V Interface Status and MTU Information
+  hosts: csr
+  gather_facts: no
+  connection: network_cli
+
+  tasks:
+    - name: Get interface brief information
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+      register: interface_brief
+
+    - name: Get detailed interface information with MTU
+      cisco.ios.ios_command:
+        commands:
+          - show interfaces
+      register: interface_details
+
+    - name: Display interface brief status
+      debug:
+        msg: |
+          === INTERFACE STATUS SUMMARY ===
+          {{ interface_brief.stdout[0] }}
+
+    - name: Parse and display interface MTU and status
+      debug:
+        msg: |
+          === INTERFACE DETAILS (Name, MTU, Status) ===
+          Processing interface details for MTU and line protocol status...
+      
+    - name: Show detailed interface information
+      debug:
+        var: interface_details.stdout[0]
+        
+    - name: Extract key interface information
+      set_fact:
+        interface_summary: "{{ interface_details.stdout[0] | regex_findall('(\\S+) is (up|down|administratively down).*\\n.*MTU (\\d+)') }}"
+      
+    - name: Display formatted interface summary
+      debug:
+        msg: |
+          === INTERFACE SUMMARY ===
+          Interface: {{ item[0] }}
+          Status: {{ item[1] }}
+          MTU: {{ item[2] }} bytes
+          ---
+      loop: "{{ interface_summary }}"
+      when: interface_summary is defined and interface_summary | length > 0

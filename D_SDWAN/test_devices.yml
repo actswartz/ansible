@@ -1,0 +1,49 @@
+---
+- name: Test devices endpoint
+  hosts: localhost
+  gather_facts: no
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Authenticate with vManage
+      uri:
+        url: "{{ vmanage_url }}/j_security_check"
+        method: POST
+        body: "j_username={{ vmanage_username }}&j_password={{ vmanage_password }}"
+        validate_certs: false
+        headers:
+          Content-Type: "application/x-www-form-urlencoded"
+      register: login_response
+
+    - name: Set session cookie
+      set_fact:
+        vmanage_cookie: "{{ login_response.cookies_string }}"
+
+    - name: Get CSRF token
+      uri:
+        url: "{{ vmanage_url }}/dataservice/client/token"
+        method: GET
+        validate_certs: false
+        return_content: yes
+        headers:
+          Cookie: "{{ vmanage_cookie }}"
+      register: token_response
+
+    - name: Set CSRF token
+      set_fact:
+        csrf_token: "{{ token_response.content }}"
+
+    - name: Get all devices
+      uri:
+        url: "{{ vmanage_url }}/dataservice/device"
+        method: GET
+        validate_certs: false
+        return_content: yes
+        headers:
+          Cookie: "{{ vmanage_cookie }}"
+          X-XSRF-TOKEN: "{{ csrf_token }}"
+      register: all_devices_raw
+
+    - debug:
+        var: all_devices_raw

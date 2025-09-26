@@ -1,0 +1,76 @@
+---
+# This playbook connects to a Cisco NXOS switch and retrieves interface statistics
+# It sorts all interfaces by their output packet count (highest to lowest)
+# This helps identify which interfaces are handling the most outbound traffic
+
+- name: Get NXOS Interface Statistics Sorted by Output Packets
+  hosts: nxos                   # Target the 'nxos' group from inventory file
+  gather_facts: no              # Skip system fact gathering for faster execution
+  connection: network_cli       # Use CLI connection for network devices
+
+  tasks:
+    # Task 1: Get detailed interface statistics from the NXOS device
+    - name: Get interface statistics
+      cisco.nxos.nxos_command:   # Use Cisco NXOS command module
+        commands:
+          - show interface       # This command shows detailed stats for all interfaces
+      register: interface_stats # Store the command output in a variable
+
+    # Task 2: Parse the interface output to extract interface names and packet counts
+    - name: Extract interface names and output packet counts
+      set_fact:                 # Create a new variable with processed data
+        # This regex finds interface names and their output packet counts
+        # Pattern explanation:
+        # (\S+) = captures interface name (non-whitespace characters)
+        # .*? = matches any characters (non-greedy)
+        # (\d+) packets output = captures the output packet number
+        interface_packets: "{{ interface_stats.stdout[0] | regex_findall('(\\S+) is.*?\\n.*?(\\d+) packets output') }}"
+
+    # Task 3: Convert the extracted data into a more usable format with proper data types
+    - name: Create interface list with packet counts
+      set_fact:
+        # Transform the data into a list of dictionaries for easier sorting
+        # Each item will have 'name' and 'output_packets' keys
+        interfaces_list: "{{ interfaces_list | default([]) + [{'name': item[0], 'output_packets': item[1] | int}] }}"
+      loop: "{{ interface_packets }}"  # Process each interface found
+      when: interface_packets is defined and interface_packets | length > 0
+
+    # Task 4: Sort interfaces by output packet count (highest first)
+    - name: Sort interfaces by output packet count (descending)
+      set_fact:
+        # Sort the interfaces list by output_packets field in descending order
+        # This puts the busiest interfaces (most output packets) at the top
+        sorted_interfaces: "{{ interfaces_list | sort(attribute='output_packets', reverse=true) }}"
+      when: interfaces_list is defined
+
+    # Task 5: Display the sorted interface statistics
+    - name: Display interfaces sorted by output packet count
+      debug:                    # Print formatted results to screen
+        msg: |
+          === INTERFACES SORTED BY OUTPUT PACKETS (Highest to Lowest) ===
+          Interface: {{ item.name }}
+          Output Packets: {{ item.output_packets | string | regex_replace('(\\d)(?=(\\d{3})+$)', '\\1,') }}
+          ---
+      loop: "{{ sorted_interfaces }}"  # Show each interface in sorted order
+      when: sorted_interfaces is defined and sorted_interfaces | length > 0
+
+    # Task 6: Display summary statistics
+    - name: Display summary statistics
+      debug:
+        msg: |
+          === SUMMARY STATISTICS ===
+          Total Interfaces: {{ sorted_interfaces | length }}
+          Highest Traffic Interface: {{ sorted_interfaces[0].name }} ({{ sorted_interfaces[0].output_packets | string | regex_replace('(\\d)(?=(\\d{3})+$)', '\\1,') }} packets)
+          Lowest Traffic Interface: {{ sorted_interfaces[-1].name }} ({{ sorted_interfaces[-1].output_packets | string | regex_replace('(\\d)(?=(\\d{3})+$)', '\\1,') }} packets)
+          Average Output Packets: {{ (sorted_interfaces | map(attribute='output_packets') | sum / sorted_interfaces | length) | round | int | string | regex_replace('(\\d)(?=(\\d{3})+$)', '\\1,') }}
+      when: sorted_interfaces is defined and sorted_interfaces | length > 0
+
+    # Task 7: Show top 5 busiest interfaces
+    - name: Display top 5 busiest interfaces
+      debug:
+        msg: |
+          === TOP 5 BUSIEST INTERFACES ===
+          {% for interface in sorted_interfaces[:5] %}
+          {{ loop.index }}. {{ interface.name }}: {{ interface.output_packets | string | regex_replace('(\\d)(?=(\\d{3})+$)', '\\1,') }} output packets
+          {% endfor %}
+      when: sorted_interfaces is defined and sorted_interfaces | length > 0

@@ -1,0 +1,120 @@
+---
+- name: Lab 5 - VLANs and Subinterfaces Configuration
+  hosts: csr
+  connection: network_cli
+  gather_facts: no
+  
+  vars:
+    ansible_network_os: ios
+    
+  tasks:
+    - name: Display current interface status
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+          - show interfaces trunk
+      register: current_interfaces
+      
+    - name: Show current interface status
+      debug:
+        var: current_interfaces.stdout_lines
+        
+    - name: Enable parent interface GigabitEthernet1
+      cisco.ios.ios_config:
+        parents: interface GigabitEthernet1
+        lines:
+          - no shutdown
+      register: parent_interface
+      
+    - name: Configure VLAN 10 subinterface
+      cisco.ios.ios_config:
+        parents: interface GigabitEthernet1.10
+        lines:
+          - encapsulation dot1Q 10
+          - ip address 192.168.110.1 255.255.255.0
+          - description VLAN10-Users
+      register: vlan10_config
+      
+    - name: Configure VLAN 20 subinterface
+      cisco.ios.ios_config:
+        parents: interface GigabitEthernet1.20
+        lines:
+          - encapsulation dot1Q 20
+          - ip address 192.168.120.1 255.255.255.0
+          - description VLAN20-Servers
+      register: vlan20_config
+      
+    - name: Configure VLAN 30 subinterface
+      cisco.ios.ios_config:
+        parents: interface GigabitEthernet1.30
+        lines:
+          - encapsulation dot1Q 30
+          - ip address 192.168.130.1 255.255.255.0
+          - description VLAN30-Management
+      register: vlan30_config
+      
+    - name: Display parent interface configuration changes
+      debug:
+        msg: "Parent interface configuration: {{ parent_interface.commands | default(['No changes']) | join(', ') }}"
+        
+    - name: Display VLAN 10 configuration changes
+      debug:
+        msg: "VLAN 10 configuration: {{ vlan10_config.commands | default(['No changes']) | join(', ') }}"
+        
+    - name: Display VLAN 20 configuration changes
+      debug:
+        msg: "VLAN 20 configuration: {{ vlan20_config.commands | default(['No changes']) | join(', ') }}"
+        
+    - name: Display VLAN 30 configuration changes
+      debug:
+        msg: "VLAN 30 configuration: {{ vlan30_config.commands | default(['No changes']) | join(', ') }}"
+        
+    - name: Wait for interfaces to initialize
+      pause:
+        seconds: 5
+        
+    - name: Verify subinterface configuration
+      cisco.ios.ios_command:
+        commands:
+          - show ip interface brief
+          - show running-config interface GigabitEthernet1.10
+          - show running-config interface GigabitEthernet1.20
+          - show running-config interface GigabitEthernet1.30
+      register: subinterface_verification
+      
+    - name: Show updated interface status
+      debug:
+        msg: "{{ subinterface_verification.stdout[0].split('\n') }}"
+        
+    - name: Show VLAN 10 subinterface configuration
+      debug:
+        msg: "{{ subinterface_verification.stdout[1].split('\n') }}"
+        
+    - name: Show VLAN 20 subinterface configuration
+      debug:
+        msg: "{{ subinterface_verification.stdout[2].split('\n') }}"
+        
+    - name: Show VLAN 30 subinterface configuration
+      debug:
+        msg: "{{ subinterface_verification.stdout[3].split('\n') }}"
+        
+    - name: Configure inter-VLAN routing (enable IP routing)
+      cisco.ios.ios_config:
+        lines:
+          - ip routing
+      register: ip_routing
+      
+    - name: Display IP routing configuration
+      debug:
+        msg: "IP routing configuration: {{ ip_routing.commands | default(['No changes']) | join(', ') }}"
+        
+    - name: Test connectivity between VLANs
+      cisco.ios.ios_ping:
+        dest: 192.168.120.1
+        source: 192.168.10.1
+      register: inter_vlan_ping
+      ignore_errors: yes
+      
+    - name: Display inter-VLAN connectivity test
+      debug:
+        msg: "Inter-VLAN ping test: {{ 'SUCCESS' if (inter_vlan_ping.packet_loss is defined and inter_vlan_ping.packet_loss == '0') else 'FAILED' }}"

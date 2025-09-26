@@ -1,6 +1,0 @@
----
-collections:
-- name: git@github.com:cisco-en-programmability/ansible-collection-catalystwan.git
-  type: git
-  version: main
-

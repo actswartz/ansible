@@ -1,0 +1,37 @@
+---
+# Simple playbook to show interface packet statistics on NXOS
+# Just shows the raw output without complex sorting
+
+- name: Simple Interface Packet Stats (Easy Version)
+  hosts: nxos
+  gather_facts: no
+  connection: network_cli
+
+  tasks:
+    # Get interface statistics
+    - name: Get interface stats
+      cisco.nxos.nxos_command:
+        commands:
+          - show interface | include packets
+      register: packet_stats
+
+    # Show packet statistics
+    - name: Show packet statistics
+      debug:
+        msg: |
+          Interface Packet Statistics:
+          {{ packet_stats.stdout[0] }}
+
+    # Get interface brief
+    - name: Get interface brief
+      cisco.nxos.nxos_command:
+        commands:
+          - show interface brief
+      register: interface_brief
+
+    # Show interface brief
+    - name: Show interface summary
+      debug:
+        msg: |
+          Interface Summary:
+          {{ interface_brief.stdout[0] }}

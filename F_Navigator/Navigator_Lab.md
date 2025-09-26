@@ -57,14 +57,20 @@ all:
 **Run your first command:**
 
 ```bash
-ansible-navigator exec -- ansible localhost -m ping -i inventory.yml
+ansible-navigator exec -- ansible localhost -m ping -i inventory.yml --mode stdout
 ```
 
 The first run will pull the default Execution Environment image.
 
 ### Expected Outcome
 
-You will see the ansible-navigator TUI launch with a “PLAY RECAP” showing `ok=1`. Press `ESC` to exit.
+You will see a JSON output with a "ping" value of "pong", indicating a successful connection.
+```json
+{
+    "changed": false,
+    "ping": "pong"
+}
+```
 
 ### Questions
 
@@ -172,7 +178,7 @@ View current settings, explore inventory, and check installed collections.
 
 ```bash
 ansible-navigator settings
-ansible-navigator inventory -i inventory.yml
+ansible-navigator inventory -i inventory.yml --list
 ansible-navigator collections
 ```
 
@@ -233,21 +239,34 @@ ansible-navigator doc ansible.builtin.apt
 
 ### Exercise
 
-Create encrypted variables:
+**Note:** The `ansible-vault create` command opens an editor and is difficult to use in scripts. The following method is more automation-friendly.
 
-```bash
-ansible-vault create secrets.yml
-```
+**1. Create a plaintext secrets file:**
 
-`secrets.yml` content:
-
+Create a file named `secrets.plain.yml`:
 ```yaml
 ---
 api_key: "abc123-def456-789-xyz"
 db_password: "super_secret_password"
 ```
 
-Playbook `vault_playbook.yml`:
+**2. Create a vault password file:**
+
+Create a file named `.vault_pass` with your desired password. For this lab, we'll use `a_simple_password`.
+```bash
+echo "a_simple_password" > .vault_pass
+```
+*Note: In a real project, be sure to add `.vault_pass` to your `.gitignore` file to avoid committing it.*
+
+**3. Encrypt the secrets file:**
+
+Use `ansible-vault` to encrypt the plaintext file.
+```bash
+ansible-vault encrypt secrets.plain.yml --vault-password-file .vault_pass --output secrets.yml
+```
+Now you have an encrypted `secrets.yml` file. You can safely delete `secrets.plain.yml`.
+
+**4. Create the playbook `vault_playbook.yml`:**
 
 ```yaml
 ---
@@ -262,10 +281,11 @@ Playbook `vault_playbook.yml`:
         msg: "The API key is {{ api_key }}"
 ```
 
-Run:
+**5. Run the playbook:**
 
+Provide the vault password file to run the playbook non-interactively.
 ```bash
-ansible-navigator run vault_playbook.yml -i inventory.yml
+ansible-navigator run vault_playbook.yml -i inventory.yml --vault-password-file .vault_pass
 ```
 
 ### Questions

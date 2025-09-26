@@ -1,0 +1,10 @@
+---
+- name: Test using vault secrets
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - secrets.yml
+  tasks:
+    - name: Display the secret API key
+      ansible.builtin.debug:
+        msg: "The API key is {{ api_key }}"

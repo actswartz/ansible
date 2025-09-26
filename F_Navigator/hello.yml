@@ -1,0 +1,18 @@
+---
+- name: A simple test playbook
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Task 1 - Print a message
+      ansible.builtin.debug:
+        msg: "Hello from Ansible Navigator!"
+
+    # The 'uptime' command is not available in the default execution environment.
+    # Using 'ls -l /' instead to demonstrate command execution.
+    - name: Task 2 - Show directory listing
+      ansible.builtin.command: "ls -l /"
+      register: ls_result
+
+    - name: Task 3 - Display directory listing
+      ansible.builtin.debug:
+        var: ls_result.stdout

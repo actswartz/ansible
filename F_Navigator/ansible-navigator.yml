@@ -1,0 +1,6 @@
+---
+ansible-navigator:
+  execution-environment:
+    image: "quay.io/ansible/ansible-runner:latest"
+    pull:
+      policy: missing

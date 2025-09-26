@@ -1,6 +1,8 @@
 ---
 ansible-navigator:
+  playbook-artifact:
+    enable: true
   execution-environment:
-    image: "quay.io/ansible/ansible-runner:latest"
+    image: "ghcr.io/ansible/creator-ee:v0.12.0"
     pull:
       policy: missing

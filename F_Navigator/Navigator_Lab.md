@@ -57,7 +57,7 @@ all:
 **Run your first command:**
 
 ```bash
-ansible-navigator run -m ping localhost -i inventory.yml
+ansible-navigator exec -- ansible localhost -m ping -i inventory.yml
 ```
 
 The first run will pull the default Execution Environment image.
@@ -93,13 +93,13 @@ Execute a basic playbook and learn to navigate the TUI.
       ansible.builtin.debug:
         msg: "Hello from Ansible Navigator!"
 
-    - name: Task 2 - Show uptime
-      ansible.builtin.command: "uptime"
-      register: uptime_result
+    - name: Task 2 - Show date
+      ansible.builtin.command: "date"
+      register: date_result
 
-    - name: Task 3 - Display uptime
+    - name: Task 3 - Display date
       ansible.builtin.debug:
-        var: uptime_result.stdout
+        var: date_result.stdout
 ```
 
 **Run the playbook:**
@@ -133,6 +133,15 @@ ansible-navigator run hello.yml -i inventory.yml
 Use the replay subcommand to review a previous playbook run.
 
 ### Exercise
+
+**Note:** Playbook artifacts are not enabled by default. Before running the command, ensure you have an `ansible-navigator.yml` file and add the following content to enable artifact creation:
+
+```yaml
+---
+ansible-navigator:
+  playbook-artifact:
+    enable: true
+```
 
 Run a playbook to generate an artifact:
 

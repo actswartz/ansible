@@ -1,0 +1,4 @@
+Name,Project Name,Software Type,Last Update Time
+{% for template in templates %}
+"{{ template.name }}","{{ template.projectName }}",{{ template.softwareType }},{{ template.versionsInfo[0].versionTime }}
+{% endfor %}

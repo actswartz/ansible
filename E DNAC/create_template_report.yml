@@ -1,0 +1,27 @@
+---
+- name: Playbook 3 - Create a CSV Report of Configuration Templates
+  hosts: dnac
+  gather_facts: no
+  connection: local
+  collections:
+    - cisco.dnac
+
+  tasks:
+    - name: Get Configuration Template List
+      configuration_template_info:
+        dnac_host: "198.18.129.100"
+        dnac_username: "admin"
+        dnac_password: "C1sco12345"
+        dnac_verify: false
+      register: template_list
+
+    - name: Create CSV file from template
+      template:
+        src: templates_csv.j2
+        dest: template_report.csv
+      vars:
+        templates: "{{ template_list.dnac_response }}"
+
+    - name: Display report location
+      debug:
+        msg: "CSV report created at: template_report.csv"

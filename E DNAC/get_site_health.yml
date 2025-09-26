@@ -1,0 +1,19 @@
+---
+- name: Playbook 2 - Get Site Health from Cisco DNA Center
+  hosts: dnac
+  gather_facts: no
+  collections:
+    - cisco.dnac
+
+  tasks:
+    - name: Get Site Health Information
+      site_health_info:
+        dnac_host: "198.18.129.100"
+        dnac_username: "admin"
+        dnac_password: "C1sco12345"
+        dnac_verify: false
+      register: site_health
+
+    - name: Print Site Health
+      debug:
+        var: site_health.dnac_response

@@ -1,0 +1,19 @@
+---
+- name: Playbook 1 - Get Network Devices from Cisco DNA Center
+  hosts: dnac
+  gather_facts: no
+  collections:
+    - cisco.dnac
+
+  tasks:
+    - name: Get Network Device List
+      network_device_info:
+        dnac_host: "198.18.129.100"
+        dnac_username: "admin"
+        dnac_password: "C1sco12345"
+        dnac_verify: false
+      register: device_list
+
+    - name: Print Device List
+      debug:
+        var: device_list.dnac_response

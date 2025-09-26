@@ -1,9 +1,9 @@
 #!/bin/bash
-LATEST_ARTIFACT=$(ls -t ansible-navigator-artifact-*.json | head -n 1)
-if [ -z "$LATEST_ARTIFACT" ]; then
-  echo "Error: No artifact file found."
+ARTIFACT_FILE="/tmp/my-artifact.json"
+if [ ! -f "$ARTIFACT_FILE" ]; then
+  echo "Error: Artifact file not found at $ARTIFACT_FILE"
   exit 1
 fi
-COMMAND="ansible-navigator replay \$LATEST_ARTIFACT --mode stdout"
+COMMAND="ansible-navigator replay \$ARTIFACT_FILE --mode stdout"
 echo "Executing: $COMMAND"
-ansible-navigator replay "$LATEST_ARTIFACT" --mode stdout
+ansible-navigator replay "$ARTIFACT_FILE" --mode stdout
